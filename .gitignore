@@ -1,0 +1,8 @@
+node_modules
+etoolkit-m1/apps/mobile/node_modules
+etoolkit-m1/apps/mobile/.expo
+build
+dist
+.env
+*.log
+.DS_Store
