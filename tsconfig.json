@@ -1,0 +1,13 @@
+{
+  "compilerOptions": {
+    "target": "es2019",
+    "module": "esnext",
+    "moduleResolution": "node",
+    "strict": true,
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "skipLibCheck": true
+  },
+  "include": ["apps/mobile/lib/**/*.ts", "tests/**/*.ts", "apps/mobile/features/**/*.ts", "supabase/sql/**/*.ts"],
+  "exclude": ["node_modules"]
+}
