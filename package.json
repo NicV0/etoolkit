@@ -8,5 +8,9 @@
   "devDependencies": {
     "typescript": "^5.4.0",
     "vitest": "^1.2.0"
+  },
+  "dependencies": {
+    "@expo/cli": "^0.24.20",
+    "expo": "^53.0.20"
   }
 }
