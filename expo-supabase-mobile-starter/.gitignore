@@ -1,0 +1,25 @@
+# Node
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-store/
+.pnp.*
+
+# Expo/Metro
+.expo/
+.expo-shared/
+dist/
+build/
+web-build/
+*.apk
+*.aab
+*.ipa
+
+# Env
+.env*
+!.env.example
+
+# OS
+.DS_Store
+Thumbs.db
