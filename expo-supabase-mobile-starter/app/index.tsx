@@ -6,5 +6,11 @@ export default function Index() {
   const { session, isLoading } = useAuth()
 
   if (isLoading) return null
-  return <Redirect href={session ? '/(app)/home' : '/(auth)/sign-in'} />
+  
+  // TEMPORARY: Bypass authentication for testing
+  // TODO: Remove this bypass once authentication is working
+  return <Redirect href="/(tabs)" />
+  
+  // Original code (uncomment when auth is working):
+  // return <Redirect href={session ? '/(app)/home' : '/(auth)/sign-in'} />
 }

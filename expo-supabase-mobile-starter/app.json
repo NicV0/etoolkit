@@ -1,28 +1,40 @@
 {
   "expo": {
-    "name": "Expo Supabase Starter",
-    "slug": "expo-supabase-starter",
-    "scheme": "supabase-starter",
+    "name": "eToolkit",
+    "slug": "etoolkit",
+    "scheme": "etoolkit",
     "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
     "splash": {
       "backgroundColor": "#ffffff"
     },
-    "plugins": ["expo-secure-store"],
+    "plugins": [
+      "expo-secure-store",
+      "expo-notifications",
+      "expo-document-picker"
+    ],
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.etoolkit.app"
     },
     "android": {
       "adaptiveIcon": {
         "backgroundColor": "#ffffff"
       },
-      "package": "com.example.exposupabasestarter"
+      "package": "com.etoolkit.app",
+      "permissions": [
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO"
+      ]
     },
     "web": {
       "bundler": "metro"
     },
     "extra": {
       "eas": {
-        "projectId": "YOUR_EAS_PROJECT_ID"
+        "projectId": "52b73b76-b8aa-48de-93e0-cbbea7d4ad94"
       }
     }
   }

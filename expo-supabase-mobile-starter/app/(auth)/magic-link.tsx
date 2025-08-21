@@ -6,7 +6,12 @@ export default function MagicLink() {
   const [email, setEmail] = useState('')
 
   async function onSend() {
-    const { error } = await supabase.auth.signInWithOtp({ email })
+    const { error } = await supabase.auth.signInWithOtp({ 
+      email,
+      options: {
+        emailRedirectTo: 'etoolkit://auth'
+      }
+    })
     if (error) return Alert.alert('Failed', error.message)
     Alert.alert('Magic link sent. Check your email.')
   }
