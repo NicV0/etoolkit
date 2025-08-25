@@ -1,43 +1,38 @@
-import { supabase } from '../supabase'
-import { pricebookItemSchema, PricebookItemFormData } from '../validation'
-import { logActivity } from '../db/mutations'
+import { supabase } from '../supabase';
+import { pricebookItemSchema, PricebookItemFormData } from '../validation';
+import { logActivity } from '../db/mutations';
 
 export interface PricebookFilters {
-  category?: string
-  active?: boolean
-  is_quick_pick?: boolean
-  search?: string
-  limit?: number
-  offset?: number
+  category?: string;
+  active?: boolean;
+  isQuickPick?: boolean;
+  search?: string;
+  limit?: number;
+  offset?: number;
 }
 
 export interface PricebookItem {
-  id: string
-  org_id: string
-  code?: string
-  name: string
-  category?: string
-  unit: string
-  unit_price: number
-  taxable: boolean
-  active: boolean
-  is_quick_pick: boolean
-  created_at: string
-  updated_at: string
+  id: string;
+  org_id: string;
+  code?: string;
+  name: string;
+  category?: string;
+  unit: string;
+  unit_price: number;
+  taxable: boolean;
+  active: boolean;
+  is_quick_pick: boolean;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface CreatePricebookItemData extends PricebookItemFormData {
-  code?: string
+  org_id?: string;
 }
 
 export interface UpdatePricebookItemData extends Partial<PricebookItemFormData> {
-  code?: string
-}
-
-export interface PricebookCategory {
-  category: string
-  count: number
-  total_value: number
+  active?: boolean;
+  is_quick_pick?: boolean;
 }
 
 export const pricebookAPI = {
@@ -47,39 +42,39 @@ export const pricebookAPI = {
       .from('pricebook_items')
       .select('*')
       .eq('org_id', orgId)
-      .order('name')
+      .order('name');
 
     if (filters?.category) {
-      query = query.eq('category', filters.category)
+      query = query.eq('category', filters.category);
     }
 
     if (filters?.active !== undefined) {
-      query = query.eq('active', filters.active)
+      query = query.eq('active', filters.active);
     }
 
-    if (filters?.is_quick_pick !== undefined) {
-      query = query.eq('is_quick_pick', filters.is_quick_pick)
+    if (filters?.isQuickPick !== undefined) {
+      query = query.eq('is_quick_pick', filters.isQuickPick);
     }
 
     if (filters?.search) {
-      query = query.or(`name.ilike.%${filters.search}%,code.ilike.%${filters.search}%,category.ilike.%${filters.search}%`)
+      query = query.or(`name.ilike.%${filters.search}%,code.ilike.%${filters.search}%,category.ilike.%${filters.search}%`);
     }
 
     if (filters?.limit) {
-      query = query.limit(filters.limit)
+      query = query.limit(filters.limit);
     }
 
     if (filters?.offset) {
-      query = query.range(filters.offset, filters.offset + (filters.limit || 50) - 1)
+      query = query.range(filters.offset, filters.offset + (filters.limit || 50) - 1);
     }
 
-    const { data, error } = await query
+    const { data, error } = await query;
 
     if (error) {
-      throw new Error(`Failed to fetch pricebook items: ${error.message}`)
+      throw new Error(`Failed to fetch pricebook items: ${error.message}`);
     }
 
-    return data || []
+    return data || [];
   },
 
   // Get single pricebook item
@@ -88,114 +83,67 @@ export const pricebookAPI = {
       .from('pricebook_items')
       .select('*')
       .eq('id', itemId)
-      .single()
+      .single();
 
     if (error) {
-      throw new Error(`Failed to fetch pricebook item: ${error.message}`)
+      throw new Error(`Failed to fetch pricebook item: ${error.message}`);
     }
 
-    return data
+    return data;
   },
 
   // Create new pricebook item
   create: async (orgId: string, data: CreatePricebookItemData): Promise<PricebookItem> => {
     // Validate input data
-    const validatedData = pricebookItemSchema.parse(data)
-
-    // Check quick pick limit for free plan
-    if (validatedData.is_quick_pick) {
-      const { data: org } = await supabase
-        .from('organizations')
-        .select('plan')
-        .eq('id', orgId)
-        .single()
-
-      if (org?.plan === 'free') {
-        const { count } = await supabase
-          .from('pricebook_items')
-          .select('*', { count: 'exact', head: true })
-          .eq('org_id', orgId)
-          .eq('is_quick_pick', true)
-
-        if (count && count >= 10) {
-          throw new Error('Free plan limited to 10 quick pick items. Upgrade to add more.')
-        }
-      }
-    }
+    const validatedData = pricebookItemSchema.parse(data);
 
     const { data: item, error } = await supabase
       .from('pricebook_items')
       .insert({
         ...validatedData,
-        org_id: orgId
+        org_id: orgId,
+        name: validatedData.name || 'New Item', // Ensure name is always provided
+        unit_price: validatedData.unit_price || 0 // Ensure unit_price is always provided
       })
       .select()
-      .single()
+      .single();
 
     if (error) {
-      throw new Error(`Failed to create pricebook item: ${error.message}`)
+      throw new Error(`Failed to create pricebook item: ${error.message}`);
     }
 
     // Log activity
     await logActivity(orgId, 'pricebook_item', item.id, 'created', {
       item_name: item.name,
-      unit_price: item.unit_price
-    })
+      category: item.category
+    });
 
-    return item
+    return item;
   },
 
   // Update existing pricebook item
   update: async (itemId: string, data: UpdatePricebookItemData): Promise<PricebookItem> => {
     // Validate input data
-    const validatedData = pricebookItemSchema.partial().parse(data)
+    const validatedData = pricebookItemSchema.partial().parse(data);
 
-    // Check quick pick limit if setting to true
-    if (validatedData.is_quick_pick === true) {
-      const { data: item } = await supabase
-        .from('pricebook_items')
-        .select('org_id')
-        .eq('id', itemId)
-        .single()
-
-      if (item) {
-        const { data: org } = await supabase
-          .from('organizations')
-          .select('plan')
-          .eq('id', item.org_id)
-          .single()
-
-        if (org?.plan === 'free') {
-          const { count } = await supabase
-            .from('pricebook_items')
-            .select('*', { count: 'exact', head: true })
-            .eq('org_id', item.org_id)
-            .eq('is_quick_pick', true)
-
-          if (count && count >= 10) {
-            throw new Error('Free plan limited to 10 quick pick items. Upgrade to add more.')
-          }
-        }
-      }
-    }
-
-    const { data: updatedItem, error } = await supabase
+    const { data: item, error } = await supabase
       .from('pricebook_items')
       .update(validatedData)
       .eq('id', itemId)
       .select()
-      .single()
+      .single();
 
     if (error) {
-      throw new Error(`Failed to update pricebook item: ${error.message}`)
+      throw new Error(`Failed to update pricebook item: ${error.message}`);
     }
 
     // Log activity
-    await logActivity(updatedItem.org_id, 'pricebook_item', itemId, 'updated', {
-      item_name: updatedItem.name
-    })
+    await logActivity(item.org_id, 'pricebook_item', itemId, 'updated', {
+      item_name: item.name,
+      category: item.category
+    });
 
-    return updatedItem
+    return item;
   },
 
   // Delete pricebook item
@@ -204,31 +152,48 @@ export const pricebookAPI = {
       .from('pricebook_items')
       .select('org_id, name')
       .eq('id', itemId)
-      .single()
+      .single();
 
     if (fetchError) {
-      throw new Error(`Failed to fetch pricebook item: ${fetchError.message}`)
+      throw new Error(`Failed to fetch pricebook item: ${fetchError.message}`);
     }
 
     const { error } = await supabase
       .from('pricebook_items')
       .delete()
-      .eq('id', itemId)
+      .eq('id', itemId);
 
     if (error) {
-      throw new Error(`Failed to delete pricebook item: ${error.message}`)
+      throw new Error(`Failed to delete pricebook item: ${error.message}`);
     }
 
     // Log activity
     await logActivity(item.org_id, 'pricebook_item', itemId, 'deleted', {
       item_name: item.name
-    })
+    });
+  },
+
+  // Get quick pick items
+  getQuickPickItems: async (orgId: string): Promise<PricebookItem[]> => {
+    const { data, error } = await supabase
+      .from('pricebook_items')
+      .select('*')
+      .eq('org_id', orgId)
+      .eq('active', true)
+      .eq('is_quick_pick', true)
+      .order('name');
+
+    if (error) {
+      throw new Error(`Failed to fetch quick pick items: ${error.message}`);
+    }
+
+    return data || [];
   },
 
   // Search pricebook items
   search: async (orgId: string, query: string): Promise<PricebookItem[]> => {
     if (!query.trim()) {
-      return []
+      return [];
     }
 
     const { data, error } = await supabase
@@ -237,189 +202,205 @@ export const pricebookAPI = {
       .eq('org_id', orgId)
       .eq('active', true)
       .or(`name.ilike.%${query}%,code.ilike.%${query}%,category.ilike.%${query}%`)
-      .order('name')
+      .order('name');
 
     if (error) {
-      throw new Error(`Failed to search pricebook items: ${error.message}`)
+      throw new Error(`Failed to search pricebook items: ${error.message}`);
     }
 
-    return data || []
-  },
-
-  // Get quick pick items
-  getQuickPicks: async (orgId: string): Promise<PricebookItem[]> => {
-    const { data, error } = await supabase
-      .from('pricebook_items')
-      .select('*')
-      .eq('org_id', orgId)
-      .eq('is_quick_pick', true)
-      .eq('active', true)
-      .order('name')
-
-    if (error) {
-      throw new Error(`Failed to fetch quick pick items: ${error.message}`)
-    }
-
-    return data || []
+    return data || [];
   },
 
   // Get categories
-  getCategories: async (orgId: string): Promise<PricebookCategory[]> => {
+  getCategories: async (orgId: string): Promise<string[]> => {
     const { data, error } = await supabase
       .from('pricebook_items')
-      .select('category, unit_price')
+      .select('category')
       .eq('org_id', orgId)
-      .eq('active', true)
+      .not('category', 'is', null);
 
     if (error) {
-      throw new Error(`Failed to fetch pricebook categories: ${error.message}`)
+      throw new Error(`Failed to fetch categories: ${error.message}`);
     }
 
-    const categories = data.reduce((acc, item) => {
-      const category = item.category || 'Uncategorized'
-      if (!acc[category]) {
-        acc[category] = { category, count: 0, total_value: 0 }
-      }
-      acc[category].count++
-      acc[category].total_value += item.unit_price || 0
-      return acc
-    }, {} as Record<string, PricebookCategory>)
-
-    return Object.values(categories).sort((a, b) => a.category.localeCompare(b.category))
+    const categories = [...new Set(data?.map(item => item.category).filter(Boolean))];
+    return categories.sort();
   },
 
-  // Bulk import pricebook items
-  bulkImport: async (orgId: string, items: CreatePricebookItemData[]): Promise<{ success: number; errors: string[] }> => {
-    const errors: string[] = []
-    let successCount = 0
+  // Bulk update items
+  bulkUpdate: async (orgId: string, itemIds: string[], updates: UpdatePricebookItemData): Promise<PricebookItem[]> => {
+    const { data, error } = await supabase
+      .from('pricebook_items')
+      .update(updates)
+      .eq('org_id', orgId)
+      .in('id', itemIds)
+      .select();
 
-    for (let i = 0; i < items.length; i++) {
-      const item = items[i]
-      const rowNumber = i + 1
+    if (error) {
+      throw new Error(`Failed to bulk update pricebook items: ${error.message}`);
+    }
+
+    // Log activity for each updated item
+    for (const item of data) {
+      await logActivity(orgId, 'pricebook_item', item.id, 'updated', {
+        item_name: item.name,
+        bulk_update: true
+      });
+    }
+
+    return data || [];
+  },
+
+  // Import pricebook items from CSV
+  importCSV: async (orgId: string, csvData: string): Promise<{ success: number; errors: string[] }> => {
+    const { parse } = await import('papaparse');
+    
+    const results = parse(csvData, {
+      header: true,
+      skipEmptyLines: true,
+      transformHeader: (header) => header.toLowerCase().replace(/\s+/g, '_')
+    });
+
+    const errors: string[] = [];
+    let successCount = 0;
+
+    for (let i = 0; i < results.data.length; i++) {
+      const row = results.data[i] as Record<string, unknown>;
+      const rowNumber = i + 2; // +2 because of 0-based index and header row
 
       try {
-        await pricebookAPI.create(orgId, item)
-        successCount++
+        // Map CSV columns to our schema
+        const itemData: CreatePricebookItemData = {
+          name: String(row.name || ''),
+          code: String(row.code || ''),
+          category: String(row.category || ''),
+          unit: String(row.unit || 'each'),
+          unit_price: parseFloat(String(row.unit_price || '0')),
+          taxable: Boolean(row.taxable),
+          active: Boolean(row.active !== 'false'),
+          is_quick_pick: Boolean(row.is_quick_pick)
+        };
+
+        // Validate the data
+        const validatedData = pricebookItemSchema.parse(itemData);
+
+        // Create the item
+        await supabase
+          .from('pricebook_items')
+          .insert({
+            ...validatedData,
+            org_id: orgId,
+            name: validatedData.name || 'New Item', // Ensure name is always provided
+            unit_price: validatedData.unit_price || 0 // Ensure unit_price is always provided
+          });
+
+        successCount++;
       } catch (error) {
-        errors.push(`Row ${rowNumber}: ${error instanceof Error ? error.message : 'Unknown error'}`)
+        errors.push(`Row ${rowNumber}: ${error instanceof Error ? error.message : 'Unknown error'}`);
       }
     }
 
-    // Log bulk import activity
+    // Log import activity
     if (successCount > 0) {
       await logActivity(orgId, 'pricebook_item', 'bulk', 'imported', {
         count: successCount,
         errors_count: errors.length
-      })
+      });
     }
 
-    return { success: successCount, errors }
+    return { success: successCount, errors };
   },
 
-  // Export pricebook to CSV
+  // Bulk import pricebook items
+  bulkImport: async (orgId: string, items: CreatePricebookItemData[]): Promise<{ success: number; errors: string[] }> => {
+    let successCount = 0;
+    const errors: string[] = [];
+
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
+      try {
+        // Validate the data
+        const validatedData = pricebookItemSchema.parse(item);
+
+        // Create the item
+        await supabase
+          .from('pricebook_items')
+          .insert({
+            ...validatedData,
+            org_id: orgId,
+            name: validatedData.name || 'New Item',
+            unit_price: validatedData.unit_price || 0
+          });
+
+        successCount++;
+      } catch (error) {
+        errors.push(`Item ${i + 1}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      }
+    }
+
+    // Log import activity
+    if (successCount > 0) {
+      await logActivity(orgId, 'pricebook_item', 'bulk', 'imported', {
+        count: successCount,
+        errors_count: errors.length
+      });
+    }
+
+    return { success: successCount, errors };
+  },
+
+  // Export pricebook items to CSV
   exportCSV: async (orgId: string, filters?: PricebookFilters): Promise<string> => {
-    const items = await pricebookAPI.list(orgId, filters)
+    const items = await pricebookAPI.list(orgId, filters);
 
-    // Define headers
-    const headers = ['Code', 'Name', 'Category', 'Unit', 'Unit Price', 'Taxable', 'Active', 'Quick Pick']
-
-    // Convert items to rows
+    // Convert to CSV format
+    const headers = ['Name', 'Code', 'Category', 'Unit', 'Unit Price', 'Taxable', 'Active', 'Quick Pick'];
     const rows = items.map(item => [
-      item.code || '',
       item.name,
+      item.code || '',
       item.category || '',
       item.unit,
       item.unit_price,
       item.taxable ? 'Yes' : 'No',
       item.active ? 'Yes' : 'No',
       item.is_quick_pick ? 'Yes' : 'No'
-    ])
+    ]);
 
-    // Build CSV content
     const csvContent = [headers, ...rows]
-      .map(row => row.map(field => `"${String(field).replace(/"/g, '""')}"`))
-      .join('\n')
+      .map(row => row.map(field => `"${field}"`).join(','))
+      .join('\n');
 
-    return csvContent
+    return csvContent;
   },
 
   // Get pricebook statistics
   getStats: async (orgId: string) => {
     const { data, error } = await supabase
       .from('pricebook_items')
-      .select('active, is_quick_pick, unit_price, category')
-      .eq('org_id', orgId)
+      .select('active, is_quick_pick, category, unit_price')
+      .eq('org_id', orgId);
 
     if (error) {
-      throw new Error(`Failed to fetch pricebook stats: ${error.message}`)
+      throw new Error(`Failed to fetch pricebook stats: ${error.message}`);
     }
 
     const stats = {
       total: data.length,
       active: data.filter(item => item.active).length,
       inactive: data.filter(item => !item.active).length,
-      quickPicks: data.filter(item => item.is_quick_pick).length,
-      categories: new Set(data.map(item => item.category).filter(Boolean)).size,
-      averagePrice: data.length > 0 ? data.reduce((sum, item) => sum + (item.unit_price || 0), 0) / data.length : 0,
-      totalValue: data.reduce((sum, item) => sum + (item.unit_price || 0), 0)
-    }
+      quickPick: data.filter(item => item.is_quick_pick).length,
+      categories: [...new Set(data.map(item => item.category).filter(Boolean))].length,
+      averagePrice: data.length > 0 
+        ? data.reduce((sum, item) => sum + (item.unit_price || 0), 0) / data.length 
+        : 0,
+      byCategory: data.reduce((acc, item) => {
+        if (item.category) {
+          acc[item.category] = (acc[item.category] || 0) + 1;
+        }
+        return acc;
+      }, {} as Record<string, number>)
+    };
 
-    return stats
-  },
-
-  // Toggle quick pick status
-  toggleQuickPick: async (itemId: string): Promise<PricebookItem> => {
-    const item = await pricebookAPI.get(itemId)
-    const newQuickPickStatus = !item.is_quick_pick
-
-    return pricebookAPI.update(itemId, { is_quick_pick: newQuickPickStatus })
-  },
-
-  // Toggle active status
-  toggleActive: async (itemId: string): Promise<PricebookItem> => {
-    const item = await pricebookAPI.get(itemId)
-    const newActiveStatus = !item.active
-
-    return pricebookAPI.update(itemId, { active: newActiveStatus })
-  },
-
-  // Get items by category
-  getByCategory: async (orgId: string, category: string): Promise<PricebookItem[]> => {
-    const { data, error } = await supabase
-      .from('pricebook_items')
-      .select('*')
-      .eq('org_id', orgId)
-      .eq('category', category)
-      .eq('active', true)
-      .order('name')
-
-    if (error) {
-      throw new Error(`Failed to fetch items by category: ${error.message}`)
-    }
-
-    return data || []
-  },
-
-  // Suggest items based on description
-  suggestItems: async (orgId: string, description: string): Promise<PricebookItem[]> => {
-    if (!description.trim()) {
-      return []
-    }
-
-    const { data, error } = await supabase
-      .from('pricebook_items')
-      .select('*')
-      .eq('org_id', orgId)
-      .eq('active', true)
-      .or(`name.ilike.%${description}%,code.ilike.%${description}%`)
-      .order('is_quick_pick', { ascending: false })
-      .order('name')
-      .limit(10)
-
-    if (error) {
-      throw new Error(`Failed to suggest items: ${error.message}`)
-    }
-
-    return data || []
+    return stats;
   }
-}
+};

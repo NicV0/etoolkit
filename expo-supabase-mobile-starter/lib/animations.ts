@@ -196,7 +196,7 @@ export const useSlideAnimation = (visible: boolean, direction: 'up' | 'down' | '
 
   useEffect(() => {
     const translateValue = visible ? 0 : 50;
-    const translateKey = direction === 'up' || direction === 'down' ? 'translateY' : 'translateX';
+    // const translateKey = direction === 'up' || direction === 'down' ? 'translateY' : 'translateX';
 
     Animated.parallel([
       Animated.timing(translateAnim, {

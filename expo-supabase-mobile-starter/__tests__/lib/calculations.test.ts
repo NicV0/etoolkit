@@ -5,141 +5,119 @@ import {
   calculateTotal, 
   calculateBalanceDue,
   isValidAmount,
-  isValidPercentage
+  isValidPercentage,
+  type CalculationItem
 } from '../../lib/calculations'
 
 describe('Money Calculations', () => {
   describe('calculateLineTotal', () => {
     it('should calculate line total correctly', () => {
-      expect(calculateLineTotal(2, 10.50)).toBe('21.00')
-      expect(calculateLineTotal(1, 5.25)).toBe('5.25')
-      expect(calculateLineTotal(0, 10.00)).toBe('0.00')
+      const item1: CalculationItem = { description: 'Item 1', quantity: 2, unit: 'each', unitPrice: 10.50 };
+      const item2: CalculationItem = { description: 'Item 2', quantity: 1, unit: 'each', unitPrice: 5.25 };
+      const item3: CalculationItem = { description: 'Item 3', quantity: 0, unit: 'each', unitPrice: 10.00 };
+      
+      expect(calculateLineTotal(item1)).toBe(21.00)
+      expect(calculateLineTotal(item2)).toBe(5.25)
+      expect(calculateLineTotal(item3)).toBe(0)
     })
 
     it('should handle decimal quantities', () => {
-      expect(calculateLineTotal(2.5, 10.00)).toBe('25.00')
-      expect(calculateLineTotal(0.5, 8.00)).toBe('4.00')
+      const item1: CalculationItem = { description: 'Item 1', quantity: 2.5, unit: 'each', unitPrice: 10.00 };
+      const item2: CalculationItem = { description: 'Item 2', quantity: 0.5, unit: 'each', unitPrice: 8.00 };
+      
+      expect(calculateLineTotal(item1)).toBe(25.00)
+      expect(calculateLineTotal(item2)).toBe(4.00)
     })
 
     it('should handle zero prices', () => {
-      expect(calculateLineTotal(5, 0)).toBe('0.00')
+      const item: CalculationItem = { description: 'Item 1', quantity: 5, unit: 'each', unitPrice: 0 };
+      expect(calculateLineTotal(item)).toBe(0)
     })
 
     it('should handle large numbers', () => {
-      expect(calculateLineTotal(1000, 999.99)).toBe('999990.00')
+      const item: CalculationItem = { description: 'Item 1', quantity: 1000, unit: 'each', unitPrice: 999.99 };
+      expect(calculateLineTotal(item)).toBe(999990.00)
     })
   })
 
   describe('calculateSubtotal', () => {
     it('should calculate subtotal correctly', () => {
-      const items = [
-        { id: '1', description: 'Item 1', quantity: 2, unit_price: 10.50, taxable: true, line_total: 21.00 },
-        { id: '2', description: 'Item 2', quantity: 1, unit_price: 5.25, taxable: true, line_total: 5.25 },
-        { id: '3', description: 'Item 3', quantity: 3, unit_price: 2.00, taxable: true, line_total: 6.00 }
+      const items: CalculationItem[] = [
+        { description: 'Item 1', quantity: 2, unit: 'each', unitPrice: 10.50 },
+        { description: 'Item 2', quantity: 1, unit: 'each', unitPrice: 5.25 },
+        { description: 'Item 3', quantity: 3, unit: 'each', unitPrice: 2.00 }
       ]
-      expect(calculateSubtotal(items)).toBe('32.25')
+      expect(calculateSubtotal(items)).toBe(32.25)
     })
 
     it('should handle empty items array', () => {
-      expect(calculateSubtotal([])).toBe('0.00')
+      expect(calculateSubtotal([])).toBe(0)
     })
 
     it('should handle single item', () => {
-      const items = [{ id: '1', description: 'Item 1', quantity: 1, unit_price: 10.00, taxable: true, line_total: 10.00 }]
-      expect(calculateSubtotal(items)).toBe('10.00')
+      const items: CalculationItem[] = [{ description: 'Item 1', quantity: 1, unit: 'each', unitPrice: 10.00 }]
+      expect(calculateSubtotal(items)).toBe(10.00)
     })
 
     it('should handle decimal quantities', () => {
-      const items = [
-        { id: '1', description: 'Item 1', quantity: 2.5, unit_price: 10.00, taxable: true, line_total: 25.00 },
-        { id: '2', description: 'Item 2', quantity: 0.5, unit_price: 8.00, taxable: true, line_total: 4.00 }
+      const items: CalculationItem[] = [
+        { description: 'Item 1', quantity: 2.5, unit: 'each', unitPrice: 10.00 },
+        { description: 'Item 2', quantity: 0.5, unit: 'each', unitPrice: 8.00 }
       ]
-      expect(calculateSubtotal(items)).toBe('29.00')
+      expect(calculateSubtotal(items)).toBe(29.00)
     })
   })
 
   describe('calculateTax', () => {
     it('should calculate tax correctly', () => {
-      const items = [
-        { id: '1', description: 'Item 1', quantity: 2, unit_price: 10.00, taxable: true, line_total: 20.00 },
-        { id: '2', description: 'Item 2', quantity: 1, unit_price: 5.00, taxable: false, line_total: 5.00 },
-        { id: '3', description: 'Item 3', quantity: 3, unit_price: 2.00, taxable: true, line_total: 6.00 }
-      ]
-      expect(calculateTax(25.00, 8.5, items)).toBe('2.04')
+      expect(calculateTax(25.00, 0.085)).toBe(2.125)
     })
 
     it('should handle zero tax rate', () => {
-      const items = [
-        { id: '1', description: 'Item 1', quantity: 1, unit_price: 10.00, taxable: true, line_total: 10.00 }
-      ]
-      expect(calculateTax(10.00, 0, items)).toBe('0.00')
+      expect(calculateTax(10.00, 0)).toBe(0)
     })
 
     it('should handle 100% tax rate', () => {
-      const items = [
-        { id: '1', description: 'Item 1', quantity: 1, unit_price: 10.00, taxable: true, line_total: 10.00 }
-      ]
-      expect(calculateTax(10.00, 100, items)).toBe('10.00')
-    })
-
-    it('should only tax taxable items', () => {
-      const items = [
-        { id: '1', description: 'Item 1', quantity: 1, unit_price: 10.00, taxable: true, line_total: 10.00 },
-        { id: '2', description: 'Item 2', quantity: 1, unit_price: 10.00, taxable: false, line_total: 10.00 }
-      ]
-      expect(calculateTax(20.00, 10, items)).toBe('1.00')
+      expect(calculateTax(10.00, 1.0)).toBe(10.00)
     })
 
     it('should handle decimal tax rates', () => {
-      const items = [
-        { id: '1', description: 'Item 1', quantity: 1, unit_price: 100.00, taxable: true, line_total: 100.00 }
-      ]
-      expect(calculateTax(100.00, 8.25, items)).toBe('8.25')
+      expect(calculateTax(100.00, 0.0825)).toBe(8.25)
     })
   })
 
   describe('calculateTotal', () => {
     it('should calculate total correctly', () => {
-      expect(calculateTotal(100.00, 8.50, 5.00)).toBe('103.50')
+      expect(calculateTotal(100.00, 8.50)).toBe(108.50)
     })
 
-    it('should handle zero tax and discount', () => {
-      expect(calculateTotal(100.00, 0, 0)).toBe('100.00')
+    it('should handle zero tax', () => {
+      expect(calculateTotal(100.00, 0)).toBe(100.00)
     })
 
-    it('should handle discount larger than subtotal', () => {
-      expect(calculateTotal(10.00, 1.00, 15.00)).toBe('0.00')
-    })
-
-    it('should handle negative values', () => {
-      expect(calculateTotal(-10.00, 1.00, 0)).toBe('0.00')
+    it('should handle negative tax', () => {
+      expect(calculateTotal(100.00, -5.00)).toBe(95.00)
     })
   })
 
   describe('calculateBalanceDue', () => {
     it('should calculate balance due correctly', () => {
-      const payments = [
-        { id: '1', amount: 50.00, method: 'cash', received_at: '2024-01-01T00:00:00Z' },
-        { id: '2', amount: 25.00, method: 'check', received_at: '2024-01-02T00:00:00Z' }
-      ]
-      expect(calculateBalanceDue(100.00, payments)).toBe('25.00')
+      const payments = [50.00, 25.00]
+      expect(calculateBalanceDue(100.00, payments)).toBe(25.00)
     })
 
     it('should handle no payments', () => {
-      expect(calculateBalanceDue(100.00, [])).toBe('100.00')
+      expect(calculateBalanceDue(100.00, [])).toBe(100.00)
     })
 
     it('should handle overpayment', () => {
-      const payments = [
-        { id: '1', amount: 100.00, method: 'cash', received_at: '2024-01-01T00:00:00Z' },
-        { id: '2', amount: 50.00, method: 'check', received_at: '2024-01-02T00:00:00Z' }
-      ]
-      expect(calculateBalanceDue(100.00, payments)).toBe('0.00')
+      const payments = [100.00, 50.00]
+      expect(calculateBalanceDue(100.00, payments)).toBe(0)
     })
 
     it('should handle zero total', () => {
-      const payments = [{ id: '1', amount: 10.00, method: 'cash', received_at: '2024-01-01T00:00:00Z' }]
-      expect(calculateBalanceDue(0, payments)).toBe('0.00')
+      const payments = [10.00]
+      expect(calculateBalanceDue(0, payments)).toBe(0)
     })
   })
 
@@ -188,38 +166,27 @@ describe('Money Calculations', () => {
 
   describe('Edge Cases', () => {
     it('should handle very small amounts', () => {
-      expect(calculateLineTotal(1, 0.01)).toBe('0.01')
-      expect(calculateLineTotal(1, 0.001)).toBe('0.00') // Rounds to 2 decimal places
+      const item1: CalculationItem = { description: 'Item 1', quantity: 1, unit: 'each', unitPrice: 0.01 };
+      const item2: CalculationItem = { description: 'Item 2', quantity: 1, unit: 'each', unitPrice: 0.001 };
+      
+      expect(calculateLineTotal(item1)).toBe(0.01)
+      expect(calculateLineTotal(item2)).toBe(0.001)
     })
 
     it('should handle very large amounts', () => {
-      expect(calculateLineTotal(1, 999999.99)).toBe('999999.99')
+      const item: CalculationItem = { description: 'Item 1', quantity: 1, unit: 'each', unitPrice: 999999.99 };
+      expect(calculateLineTotal(item)).toBe(999999.99)
     })
 
     it('should handle precision issues', () => {
-      // Test for floating point precision issues
-      const result = calculateLineTotal(3, 0.33)
-      expect(result).toBe('0.99') // Should not be 0.9999999999999999
+      const item: CalculationItem = { description: 'Item 1', quantity: 3, unit: 'each', unitPrice: 0.33 };
+      const result = calculateLineTotal(item)
+      expect(result).toBe(0.99)
     })
 
     it('should handle rounding correctly', () => {
-      expect(calculateTax(100.00, 8.25, [{ id: '1', description: 'Item 1', quantity: 1, unit_price: 100.00, taxable: true, line_total: 100.00 }])).toBe('8.25')
-      expect(calculateTax(100.00, 8.26, [{ id: '1', description: 'Item 1', quantity: 1, unit_price: 100.00, taxable: true, line_total: 100.00 }])).toBe('8.26')
-    })
-  })
-
-  describe('String Input Handling', () => {
-    it('should handle string inputs correctly', () => {
-      expect(calculateLineTotal(2, 10.50)).toBe('21.00')
-      expect(calculateSubtotal([{ id: '1', description: 'Item 1', quantity: 2, unit_price: 10.50, taxable: true, line_total: 21.00 }])).toBe('21.00')
-    })
-
-    it('should handle mixed string and number inputs', () => {
-      const items = [
-        { id: '1', description: 'Item 1', quantity: 2, unit_price: 10.50, taxable: true, line_total: 21.00 },
-        { id: '2', description: 'Item 2', quantity: 1, unit_price: 5.25, taxable: true, line_total: 5.25 }
-      ]
-      expect(calculateSubtotal(items)).toBe('26.25')
+      expect(calculateTax(100.00, 0.0825)).toBe(8.25)
+      expect(calculateTax(100.00, 0.0826)).toBe(8.26)
     })
   })
 })

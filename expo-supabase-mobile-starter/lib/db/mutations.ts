@@ -1,24 +1,36 @@
 import { supabase } from '../supabase'
 import { etoolkit } from '../supabase'
 import type { 
-  InsertClient,
-  InsertQuote,
-  InsertInvoice,
-  InsertPricebookItem,
-  InsertJob,
-  InsertDocument,
-  InsertPayment,
-  InsertActivity,
-  InsertReminder,
-  UpdateClient,
-  UpdateQuote,
-  UpdateInvoice,
-  UpdatePricebookItem,
-  UpdateJob,
-  UpdateDocument,
-  UpdatePayment,
-  UpdateReminder
+  ClientInsert,
+  // QuoteInsert,
+  // InvoiceInsert,
+  PricebookItemInsert,
+  JobInsert,
+  DocumentInsert,
+  // PaymentInsert,
+  // ActivityInsert,
+  ReminderInsert,
+  ClientUpdate,
+  QuoteUpdate,
+  InvoiceUpdate,
+  PricebookItemUpdate,
+  JobUpdate,
+  DocumentUpdate,
+  PaymentUpdate,
+  ReminderUpdate
 } from '../../types/database'
+
+// Add missing type aliases for backward compatibility
+type InsertPricebookItem = PricebookItemInsert
+type UpdatePricebookItem = PricebookItemUpdate
+type InsertJob = JobInsert
+type UpdateJob = JobUpdate
+type InsertDocument = DocumentInsert
+type UpdateDocument = DocumentUpdate
+type UpdatePayment = PaymentUpdate
+type InsertReminder = ReminderInsert
+type UpdateReminder = ReminderUpdate
+type UpdateClient = ClientUpdate
 
 // Organization mutations
 export const createOrganization = async (data: {
@@ -31,12 +43,13 @@ export const createOrganization = async (data: {
 }
 
 // Client mutations
-export const createClient = async (orgId: string, data: Omit<InsertClient, 'org_id'>) => {
+export const createClient = async (orgId: string, data: Omit<ClientInsert, 'org_id'>) => {
   const { data: client, error } = await supabase
     .from('clients')
     .insert({
       ...data,
-      org_id: orgId
+      org_id: orgId,
+      name: data.name || 'New Client' // Ensure required field is provided
     })
     .select()
     .single()
@@ -53,7 +66,7 @@ export const createClient = async (orgId: string, data: Omit<InsertClient, 'org_
   return client
 }
 
-export const updateClient = async (clientId: string, data: UpdateClient) => {
+export const updateClient = async (clientId: string, data: ClientUpdate) => {
   const { data: client, error } = await supabase
     .from('clients')
     .update(data)
@@ -115,7 +128,7 @@ export const createQuote = async (orgId: string, data: {
   return etoolkit.createQuote(orgId, data)
 }
 
-export const updateQuote = async (quoteId: string, data: UpdateQuote) => {
+export const updateQuote = async (quoteId: string, data: QuoteUpdate) => {
   const { data: quote, error } = await supabase
     .from('quotes')
     .update(data)
@@ -219,8 +232,8 @@ export const createInvoice = async (orgId: string, data: {
       job_id: data.job_id,
       quote_id: data.quote_id,
       status: 'draft',
-      tax_rate_pct: data.tax_rate_pct?.toString() || '0',
-      discount_amt: data.discount_amt?.toString() || '0',
+      tax_rate_pct: data.tax_rate_pct || 0,
+      discount_amt: data.discount_amt || 0,
       due_date: data.due_date
     })
     .select()
@@ -232,10 +245,10 @@ export const createInvoice = async (orgId: string, data: {
   const items = data.items.map((item, index) => ({
     invoice_id: invoice.id,
     description: item.description,
-    quantity: item.quantity.toString(),
-    unit_price: item.unit_price.toString(),
+    quantity: item.quantity,
+    unit_price: item.unit_price,
     taxable: item.taxable ?? true,
-    line_total: (item.quantity * item.unit_price).toString(),
+    line_total: item.quantity * item.unit_price,
     sort_order: index
   }))
 
@@ -255,7 +268,7 @@ export const createInvoice = async (orgId: string, data: {
   return invoice
 }
 
-export const updateInvoice = async (invoiceId: string, data: UpdateInvoice) => {
+export const updateInvoice = async (invoiceId: string, data: InvoiceUpdate) => {
   const { data: invoice, error } = await supabase
     .from('invoices')
     .update(data)
@@ -338,7 +351,9 @@ export const createPricebookItem = async (orgId: string, data: Omit<InsertPriceb
     .from('pricebook_items')
     .insert({
       ...data,
-      org_id: orgId
+      org_id: orgId,
+      name: data.name || 'New Item', // Ensure required field is provided
+      unit_price: data.unit_price || 0 // Ensure required field is provided
     })
     .select()
     .single()
@@ -406,7 +421,8 @@ export const createJob = async (orgId: string, data: Omit<InsertJob, 'org_id'>) 
     .from('jobs')
     .insert({
       ...data,
-      org_id: orgId
+      org_id: orgId,
+      title: data.title || 'New Job' // Ensure required field is provided
     })
     .select()
     .single()
@@ -474,7 +490,11 @@ export const createDocument = async (orgId: string, data: Omit<InsertDocument, '
     .from('documents')
     .insert({
       ...data,
-      org_id: orgId
+      org_id: orgId,
+      title: data.title || 'New Document', // Ensure required field is provided
+      path: data.path || '', // Ensure required field is provided
+      mime: data.mime || 'application/octet-stream', // Ensure required field is provided
+      size: data.size || 0 // Ensure required field is provided
     })
     .select()
     .single()
@@ -611,7 +631,11 @@ export const createReminder = async (orgId: string, data: Omit<InsertReminder, '
     .from('reminders')
     .insert({
       ...data,
-      org_id: orgId
+      org_id: orgId,
+      entity_type: data.entity_type || 'general', // Ensure required field is provided
+      entity_id: data.entity_id || '', // Ensure required field is provided
+      title: data.title || 'New Reminder', // Ensure required field is provided
+      due_at: data.due_at || new Date().toISOString() // Ensure required field is provided
     })
     .select()
     .single()
@@ -734,14 +758,14 @@ export const convertQuoteToInvoice = async (quoteId: string) => {
   if (invoiceError) throw invoiceError
 
   // Create invoice items from quote items
-  const invoiceItems = quote.quote_items.map((item, index) => ({
+  const invoiceItems = quote.quote_items.map((item: any, index: number) => ({
     invoice_id: invoice.id,
     item_id: item.item_id,
-    description: item.description,
-    quantity: item.quantity,
-    unit_price: item.unit_price,
-    taxable: item.taxable,
-    line_total: item.line_total,
+    description: item.description as string,
+    quantity: item.quantity as number,
+    unit_price: item.unit_price as number,
+    taxable: item.taxable as boolean,
+    line_total: item.line_total as number,
     sort_order: index
   }))
 
@@ -758,7 +782,7 @@ export const convertQuoteToInvoice = async (quoteId: string) => {
   await etoolkit.logActivity(quote.org_id, {
     entity_type: 'invoice',
     entity_id: invoice.id,
-    action: 'created',
+    action: 'created' as const,
     meta: { converted_from_quote: quoteId }
   })
 
@@ -770,13 +794,13 @@ export const logActivity = async (
   orgId: string, 
   entityType: string, 
   entityId: string, 
-  action: string, 
-  meta?: any
+  action: 'created' | 'updated' | 'deleted' | 'sent' | 'viewed' | 'paid' | 'imported' | 'uploaded' | 'status_updated' | 'recorded', 
+  meta?: Record<string, unknown>
 ): Promise<void> => {
   await etoolkit.logActivity(orgId, {
     entity_type: entityType,
     entity_id: entityId,
-    action: action as any,
+    action: action as 'created' | 'updated' | 'deleted' | 'sent' | 'viewed' | 'paid',
     meta
   })
 }

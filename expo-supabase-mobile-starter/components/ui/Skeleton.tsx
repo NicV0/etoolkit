@@ -1,116 +1,183 @@
 import React from 'react';
-import { View, Animated } from 'react-native';
-import { designSystem } from '../../theme/design-system';
+import {
+  View,
+  StyleSheet,
+  ViewStyle,
+} from 'react-native';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withRepeat,
+  withTiming,
+  withSequence,
+} from 'react-native-reanimated';
+import { theme } from '../../lib/theme/tokens';
 
-interface SkeletonProps {
+// Skeleton types
+export type SkeletonVariant = 'text' | 'title' | 'avatar' | 'card' | 'button';
+export type SkeletonSize = 'sm' | 'md' | 'lg';
+
+// Skeleton props interface
+export interface SkeletonProps {
+  // Variant
+  variant?: SkeletonVariant;
+  
+  // Size
+  size?: SkeletonSize;
+  
+  // Styling
+  style?: ViewStyle;
+  
+  // Other
   width?: number | string;
   height?: number;
-  borderRadius?: number;
-  style?: any;
+  lines?: number;
+  spacing?: number;
 }
 
-export const Skeleton: React.FC<SkeletonProps> = ({ 
-  width = '100%', 
-  height = 20, 
-  borderRadius = designSystem.borderRadius.md,
-  style 
+// Skeleton component
+export const Skeleton: React.FC<SkeletonProps> = React.memo(({
+  variant = 'text',
+  size = 'md',
+  style,
+  width,
+  height,
+  lines = 1,
+  spacing = theme.spacing.sm,
 }) => {
-  const animatedValue = React.useRef(new Animated.Value(0)).current;
+  // Animation values
+  const opacity = useSharedValue(0.3);
 
+  // Start shimmer animation
   React.useEffect(() => {
-    const animation = Animated.loop(
-      Animated.sequence([
-        Animated.timing(animatedValue, {
-          toValue: 1,
-          duration: 1000,
-          useNativeDriver: false,
-        }),
-        Animated.timing(animatedValue, {
-          toValue: 0,
-          duration: 1000,
-          useNativeDriver: false,
-        }),
-      ])
+    opacity.value = withRepeat(
+      withSequence(
+        withTiming(0.7, { duration: 750 }),
+        withTiming(0.3, { duration: 750 })
+      ),
+      -1,
+      true
     );
-    animation.start();
+  }, []);
 
-    return () => animation.stop();
-  }, [animatedValue]);
+  // Animated styles
+  const animatedStyle = useAnimatedStyle(() => ({
+    opacity: opacity.value,
+  }));
 
-  const opacity = animatedValue.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0.3, 0.7],
-  });
+  // Get skeleton dimensions based on variant and size
+  const getSkeletonDimensions = () => {
+    const baseHeight = size === 'sm' ? 12 : size === 'lg' ? 20 : 16;
+    
+    switch (variant) {
+      case 'title': {
+        const titleHeight = size === 'sm' ? 18 : size === 'lg' ? 28 : 24;
+        return {
+          height: titleHeight,
+          width: width || '80%',
+        };
+      }
+      case 'avatar': {
+        const avatarSize = size === 'sm' ? 32 : size === 'lg' ? 64 : 48;
+        return {
+          height: avatarSize,
+          width: avatarSize,
+          borderRadius: avatarSize / 2,
+        };
+      }
+      case 'card':
+        return {
+          height: height || 120,
+          width: width || '100%',
+          borderRadius: theme.borderRadius.lg,
+        };
+      case 'button':
+        return {
+          height: size === 'sm' ? 32 : size === 'lg' ? 48 : 40,
+          width: width || 120,
+          borderRadius: theme.borderRadius.md,
+        };
+      default: // text
+        return {
+          height: baseHeight,
+          width: width || '100%',
+          borderRadius: theme.borderRadius.sm,
+        };
+    }
+  };
 
-  return (
+  const dimensions = getSkeletonDimensions() as ViewStyle;
+
+  // Render single skeleton line
+  const renderSkeletonLine = () => (
     <Animated.View
       style={[
-        {
-          width,
-          height,
-          borderRadius,
-          backgroundColor: designSystem.colors.gray[200],
-          opacity,
-        },
+        styles.skeleton,
+        dimensions,
+        animatedStyle,
         style,
       ]}
     />
   );
-};
 
-interface SkeletonCardProps {
-  lines?: number;
-  lineHeight?: number;
-  spacing?: number;
-}
+  // Render multiple lines
+  if (lines > 1) {
+    return (
+      <View style={styles.container}>
+        {Array.from({ length: lines }).map((_, index) => (
+          <View key={index} style={[styles.lineContainer, { marginBottom: spacing }]}>
+            {renderSkeletonLine()}
+          </View>
+        ))}
+      </View>
+    );
+  }
 
-export const SkeletonCard: React.FC<SkeletonCardProps> = ({ 
-  lines = 3, 
-  lineHeight = 16, 
-  spacing = 8 
-}) => {
-  return (
-    <View style={{
-      backgroundColor: 'rgba(255, 255, 255, 0.8)',
-      borderRadius: designSystem.borderRadius.xl,
-      padding: designSystem.spacing.lg,
-      marginBottom: designSystem.spacing.sm,
-      borderWidth: 1,
-      borderColor: 'rgba(255, 255, 255, 0.6)',
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.1,
-      shadowRadius: 8,
-      elevation: 4,
-    }}>
-      {Array.from({ length: lines }).map((_, index) => (
-        <Skeleton
-          key={index}
-          height={lineHeight}
-          style={{
-            marginBottom: index === lines - 1 ? 0 : spacing,
-            width: index === 0 ? '80%' : index === 1 ? '60%' : '40%',
-          }}
-        />
-      ))}
-    </View>
-  );
-};
+  return renderSkeletonLine();
+});
 
-interface SkeletonListProps {
-  count?: number;
-  cardLines?: number;
-}
+// Skeleton text component
+export const SkeletonText: React.FC<Omit<SkeletonProps, 'variant'> & { lines?: number }> = (props) => (
+  <Skeleton variant="text" {...props} />
+);
 
-export const SkeletonList: React.FC<SkeletonListProps> = ({ 
-  count = 5, 
-  cardLines = 3 
-}) => {
-  return (
-    <View>
-      {Array.from({ length: count }).map((_, index) => (
-        <SkeletonCard key={index} lines={cardLines} />
-      ))}
-    </View>
-  );
-};
+// Skeleton title component
+export const SkeletonTitle: React.FC<Omit<SkeletonProps, 'variant'> & { lines?: number }> = (props) => (
+  <Skeleton variant="title" {...props} />
+);
+
+// Skeleton avatar component
+export const SkeletonAvatar: React.FC<Omit<SkeletonProps, 'variant' | 'lines'>> = (props) => (
+  <Skeleton variant="avatar" {...props} />
+);
+
+// Skeleton card component
+export const SkeletonCard: React.FC<Omit<SkeletonProps, 'variant' | 'lines'>> = (props) => (
+  <Skeleton variant="card" {...props} />
+);
+
+// Skeleton button component
+export const SkeletonButton: React.FC<Omit<SkeletonProps, 'variant' | 'lines'>> = (props) => (
+  <Skeleton variant="button" {...props} />
+);
+
+// Styles
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+  lineContainer: {
+    flex: 1,
+  },
+  skeleton: {
+    backgroundColor: theme.colors.surface,
+  },
+});
+
+// Export with display name for debugging
+Skeleton.displayName = 'Skeleton';
+SkeletonText.displayName = 'SkeletonText';
+SkeletonTitle.displayName = 'SkeletonTitle';
+SkeletonAvatar.displayName = 'SkeletonAvatar';
+SkeletonCard.displayName = 'SkeletonCard';
+SkeletonButton.displayName = 'SkeletonButton';

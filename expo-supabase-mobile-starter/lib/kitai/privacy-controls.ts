@@ -1,5 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage'
-import { Platform } from 'react-native'
+// import { Platform } from 'react-native'
 
 export interface PrivacySettings {
   // Data Processing
@@ -207,7 +207,7 @@ export class PrivacyController {
   /**
    * Anonymize client data
    */
-  static anonymizeClientData(clientData: any): any {
+  static anonymizeClientData(clientData: Record<string, unknown>): Record<string, unknown> {
     const config = PrivacyController.getAnonymizationConfig()
     const settings = PrivacyController.getSettings()
 
@@ -218,17 +218,17 @@ export class PrivacyController {
     const anonymized = { ...clientData }
 
     // Anonymize name
-    if (anonymized.name) {
+    if (anonymized.name && typeof anonymized.name === 'string') {
       anonymized.name = PrivacyController.anonymizeName(anonymized.name, config.clientNamePattern)
     }
 
     // Anonymize email
-    if (anonymized.email) {
+    if (anonymized.email && typeof anonymized.email === 'string') {
       anonymized.email = PrivacyController.anonymizeEmail(anonymized.email, config.clientEmailPattern)
     }
 
     // Anonymize phone
-    if (anonymized.phone) {
+    if (anonymized.phone && typeof anonymized.phone === 'string') {
       anonymized.phone = PrivacyController.anonymizePhone(anonymized.phone, config.clientPhonePattern)
     }
 
@@ -238,7 +238,7 @@ export class PrivacyController {
   /**
    * Anonymize financial data
    */
-  static anonymizeFinancialData(financialData: any): any {
+  static anonymizeFinancialData(financialData: Record<string, unknown>): Record<string, unknown> {
     const config = PrivacyController.getAnonymizationConfig()
     const settings = PrivacyController.getSettings()
 
@@ -250,13 +250,13 @@ export class PrivacyController {
 
     // Anonymize amounts
     if (anonymized.amount || anonymized.total || anonymized.subtotal) {
-      if (anonymized.amount) {
+      if (anonymized.amount && typeof anonymized.amount === 'number') {
         anonymized.amount = PrivacyController.anonymizeAmount(anonymized.amount, config.amountPattern)
       }
-      if (anonymized.total) {
+      if (anonymized.total && typeof anonymized.total === 'number') {
         anonymized.total = PrivacyController.anonymizeAmount(anonymized.total, config.amountPattern)
       }
-      if (anonymized.subtotal) {
+      if (anonymized.subtotal && typeof anonymized.subtotal === 'number') {
         anonymized.subtotal = PrivacyController.anonymizeAmount(anonymized.subtotal, config.amountPattern)
       }
     }
@@ -290,9 +290,10 @@ export class PrivacyController {
     switch (pattern) {
       case 'full':
         return name.charAt(0) + '*'.repeat(name.length - 1)
-      case 'partial':
+      case 'partial': {
         const parts = name.split(' ')
         return parts.map(part => part.charAt(0) + '*'.repeat(part.length - 1)).join(' ')
+      }
       case 'none':
         return name
       default:
@@ -305,12 +306,14 @@ export class PrivacyController {
    */
   private static anonymizeEmail(email: string, pattern: 'full' | 'partial' | 'none'): string {
     switch (pattern) {
-      case 'full':
+      case 'full': {
         const [local, domain] = email.split('@')
         return local.charAt(0) + '*'.repeat(local.length - 1) + '@' + domain
-      case 'partial':
+      }
+      case 'partial': {
         const [localPart, domainPart] = email.split('@')
         return localPart.charAt(0) + '***@' + domainPart
+      }
       case 'none':
         return email
       default:
@@ -325,8 +328,9 @@ export class PrivacyController {
     switch (pattern) {
       case 'full':
         return phone.replace(/\d/g, '*')
-      case 'partial':
+      case 'partial': {
         return phone.slice(0, 4) + '*'.repeat(phone.length - 4)
+      }
       case 'none':
         return phone
       default:
@@ -360,9 +364,10 @@ export class PrivacyController {
     switch (pattern) {
       case 'full':
         return preserveIntent ? 'search query' : '***'
-      case 'partial':
+      case 'partial': {
         const words = query.split(' ')
         return words.map(word => word.charAt(0) + '*'.repeat(word.length - 1)).join(' ')
+      }
       case 'none':
         return query
       default:
@@ -416,7 +421,7 @@ export class PrivacyController {
   /**
    * Export privacy data for user
    */
-  static async exportPrivacyData(): Promise<any> {
+  static async exportPrivacyData(): Promise<Record<string, unknown>> {
     const settings = PrivacyController.getSettings()
     const auditLog = PrivacyController.getAuditLog()
 
@@ -487,7 +492,7 @@ export const PrivacyUtils = {
   /**
    * Get privacy summary for user
    */
-  getPrivacySummary: (): Record<string, any> => {
+  getPrivacySummary: (): Record<string, unknown> => {
     const settings = PrivacyController.getSettings()
     const auditLog = PrivacyController.getAuditLog()
 

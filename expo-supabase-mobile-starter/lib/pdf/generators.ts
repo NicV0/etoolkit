@@ -1,7 +1,7 @@
 import * as Print from 'expo-print'
 import * as Sharing from 'expo-sharing'
-import * as FileSystem from 'expo-file-system'
-import { supabase } from '../supabase'
+// import * as FileSystem from 'expo-file-system'
+// import { supabase } from '../supabase'
 import { uploadDocument } from '../storage'
 import { PerformanceUtils } from '../monitoring/performance-monitor'
 import { ErrorNotifications } from '../notifications/error-notifications'
@@ -72,6 +72,86 @@ export class PDFGenerator {
     this.initializeDefaultTemplates()
   }
 
+  // Utility methods for tests
+  escapeHtml(input: string): string {
+    return input
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#x27;')
+      .replace(/\//g, '&#x2F;');
+  }
+
+  formatCurrency(amount: number, currency: string): string {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: currency || 'USD'
+    }).format(amount);
+  }
+
+  formatDate(date: string): string {
+    return new Date(date).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+  }
+
+  formatAddress(address: Record<string, string>): string {
+    const parts = [
+      address.address_line1,
+      address.address_line2,
+      address.city,
+      address.state,
+      address.postal,
+      address.country
+    ].filter(Boolean);
+    
+    return parts.join(', ');
+  }
+
+  generateItemsTable(items: Array<{ description: string; quantity: number; unit_price: number; line_total: number; taxable: boolean }>): string {
+    if (items.length === 0) {
+      return '<p>No items</p>';
+    }
+
+    const rows = items.map(item => `
+      <tr>
+        <td>${this.escapeHtml(item.description)}</td>
+        <td>${item.quantity}</td>
+        <td>${this.formatCurrency(item.unit_price, 'USD')}</td>
+        <td>${this.formatCurrency(item.line_total, 'USD')}</td>
+      </tr>
+    `).join('');
+
+    return `
+      <table>
+        <thead>
+          <tr>
+            <th>Description</th>
+            <th>Quantity</th>
+            <th>Unit Price</th>
+            <th>Total</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rows}
+        </tbody>
+      </table>
+    `;
+  }
+
+  generateSignatureBlock(): string {
+    return `
+      <div class="signature-block">
+        <p>_________________________</p>
+        <p>Signature</p>
+        <p>Date: _________________</p>
+      </div>
+    `;
+  }
+
   static getInstance(): PDFGenerator {
     if (!PDFGenerator.instance) {
       PDFGenerator.instance = new PDFGenerator()
@@ -103,8 +183,15 @@ export class PDFGenerator {
       name: 'Clean Minimal',
       isPaid: false,
       variables: ['org_name', 'org_address', 'document_type', 'number', 'date', 'client_name', 'client_address', 'items', 'subtotal', 'tax_total', 'total', 'terms'],
-      content: /* eslint-disable @typescript-eslint/no-unused-vars */
-        `
+      content: this.getCleanMinimalTemplateContent()
+    }
+  }
+
+  /**
+   * Get clean minimal template content
+   */
+  private getCleanMinimalTemplateContent(): string {
+    return `
         <!DOCTYPE html>
         <html>
         <head>
@@ -121,7 +208,7 @@ export class PDFGenerator {
             .header { 
               text-align: center; 
               margin-bottom: 30px; 
-              border-bottom: 2px solid #333;
+              border-bottom: 2px solid #eee;
               padding-bottom: 20px;
             }
             .logo { 
@@ -129,157 +216,105 @@ export class PDFGenerator {
               height: auto; 
               margin-bottom: 10px;
             }
+            .org-info {
+              margin-bottom: 20px;
+            }
             .document-info {
-              display: flex;
-              justify-content: space-between;
-              margin-bottom: 30px;
+              background: #f9f9f9;
+              padding: 15px;
+              border-radius: 5px;
+              margin-bottom: 20px;
             }
             .client-info {
               margin-bottom: 30px;
             }
-            .invoice-table { 
-              width: 100%; 
-              border-collapse: collapse; 
-              margin-bottom: 30px;
+            .items-table {
+              width: 100%;
+              border-collapse: collapse;
+              margin-bottom: 20px;
             }
-            .invoice-table th, .invoice-table td { 
-              border: 1px solid #ddd; 
-              padding: 12px; 
-              text-align: left; 
+            .items-table th,
+            .items-table td {
+              border: 1px solid #ddd;
+              padding: 12px;
+              text-align: left;
             }
-            .invoice-table th {
-              background-color: #f8f9fa;
+            .items-table th {
+              background-color: #f5f5f5;
               font-weight: bold;
             }
-            .totals { 
-              margin-top: 20px; 
-              text-align: right; 
-              font-size: 16px;
+            .totals {
+              margin-top: 20px;
             }
             .totals table {
-              margin-left: auto;
+              width: 100%;
               border-collapse: collapse;
             }
             .totals td {
-              padding: 8px 16px;
-              border-bottom: 1px solid #ddd;
+              padding: 8px;
+              border-bottom: 1px solid #eee;
             }
-            .totals .total-row {
+            .total-row {
               font-weight: bold;
-              font-size: 18px;
-              border-top: 2px solid #333;
+              font-size: 1.1em;
             }
-            .footer { 
-              margin-top: 40px; 
-              font-size: 12px; 
-              color: #666;
-              border-top: 1px solid #ddd;
+            .notes, .footer {
+              margin-top: 30px;
               padding-top: 20px;
+              border-top: 1px solid #eee;
             }
-            .status {
-              display: inline-block;
-              padding: 4px 12px;
-              border-radius: 4px;
-              font-size: 12px;
-              font-weight: bold;
-              text-transform: uppercase;
-            }
-            .status.draft { background-color: #f0f0f0; color: #666; }
-            .status.sent { background-color: #e3f2fd; color: #1976d2; }
-            .status.accepted { background-color: #e8f5e8; color: #388e3c; }
-            .status.paid { background-color: #e8f5e8; color: #388e3c; }
           </style>
         </head>
         <body>
           <div class="header">
-            {{#if logo_url}}
-            <img src="{{logo_url}}" alt="Company Logo" class="logo">
-            {{/if}}
-            <h1>{{org_name}}</h1>
-            <p>{{org_address}}</p>
-            {{#if org_phone}}<p>Phone: {{org_phone}}</p>{{/if}}
-            {{#if org_email}}<p>Email: {{org_email}}</p>{{/if}}
+            <img src="LOGO_PLACEHOLDER" alt="Logo" class="logo">
+            <h1>ORG_NAME_PLACEHOLDER</h1>
+            <p>ORG_ADDRESS_PLACEHOLDER</p>
           </div>
           
           <div class="document-info">
-            <div>
-              <h2>{{document_type}} #{{number}}</h2>
-              <p><strong>Date:</strong> {{date}}</p>
-              {{#if due_date}}<p><strong>Due Date:</strong> {{due_date}}</p>{{/if}}
-            </div>
-            <div>
-              <span class="status {{status}}">{{status}}</span>
-            </div>
+            <h2>DOCUMENT_TYPE_PLACEHOLDER #NUMBER_PLACEHOLDER</h2>
+            <p><strong>Date:</strong> DATE_PLACEHOLDER</p>
           </div>
           
           <div class="client-info">
             <h3>Bill To:</h3>
-            <p><strong>{{client_name}}</strong></p>
-            <p>{{client_address}}</p>
-            {{#if client_phone}}<p>Phone: {{client_phone}}</p>{{/if}}
-            {{#if client_email}}<p>Email: {{client_email}}</p>{{/if}}
+            <p><strong>CLIENT_NAME_PLACEHOLDER</strong></p>
+            <p>CLIENT_ADDRESS_PLACEHOLDER</p>
           </div>
           
-          <table class="invoice-table">
+          <table class="items-table">
             <thead>
               <tr>
                 <th>Description</th>
-                <th>Quantity</th>
+                <th>Qty</th>
                 <th>Unit Price</th>
                 <th>Total</th>
               </tr>
             </thead>
             <tbody>
-              {{#items}}
-              <tr>
-                <td>{{description}}</td>
-                <td>{{quantity}}</td>
-                <td>${{unit_price}}</td>
-                <td>${{line_total}}</td>
-              </tr>
-              {{/items}}
+              ITEMS_PLACEHOLDER
             </tbody>
           </table>
           
           <div class="totals">
             <table>
-              <tr><td>Subtotal:</td><td>${{subtotal}}</td></tr>
-              {{#if discount_amt}}
-              <tr><td>Discount:</td><td>-${{discount_amt}}</td></tr>
-              {{/if}}
-              {{#if tax_total}}
-              <tr><td>Tax:</td><td>${{tax_total}}</td></tr>
-              {{/if}}
+              <tr><td>Subtotal:</td><td>$SUBTOTAL_PLACEHOLDER</td></tr>
+              DISCOUNT_PLACEHOLDER
+              TAX_PLACEHOLDER
               <tr class="total-row">
                 <td>Total:</td>
-                <td>${{total}}</td>
+                <td>$TOTAL_PLACEHOLDER</td>
               </tr>
-              {{#if balance_due}}
-              <tr class="total-row">
-                <td>Balance Due:</td>
-                <td>${{balance_due}}</td>
-              </tr>
-              {{/if}}
+              BALANCE_DUE_PLACEHOLDER
             </table>
           </div>
           
-          {{#if notes}}
-          <div class="notes">
-            <h3>Notes:</h3>
-            <p>{{notes}}</p>
-          </div>
-          {{/if}}
-          
-          {{#if terms}}
-          <div class="footer">
-            <h3>Terms & Conditions:</h3>
-            <p>{{terms}}</p>
-          </div>
-          {{/if}}
+          NOTES_PLACEHOLDER
+          TERMS_PLACEHOLDER
         </body>
         </html>
-      ` /* eslint-enable @typescript-eslint/no-unused-vars */
-    }
+      `
   }
 
   /**
@@ -291,8 +326,15 @@ export class PDFGenerator {
       name: 'Modern Pro',
       isPaid: true,
       variables: ['org_name', 'org_address', 'document_type', 'number', 'date', 'client_name', 'client_address', 'items', 'subtotal', 'tax_total', 'total', 'terms'],
-      content: /* eslint-disable @typescript-eslint/no-unused-vars */
-        `
+      content: this.getModernProTemplateContent()
+    }
+  }
+
+  /**
+   * Get modern pro template content
+   */
+  private getModernProTemplateContent(): string {
+    return `
         <!DOCTYPE html>
         <html>
         <head>
@@ -335,114 +377,87 @@ export class PDFGenerator {
               display: flex;
               justify-content: space-between;
               align-items: center;
-              margin-bottom: 40px;
+              margin-bottom: 30px;
               padding: 20px;
               background: #f8f9fa;
               border-radius: 8px;
             }
             .client-info {
-              margin-bottom: 40px;
+              margin-bottom: 30px;
               padding: 20px;
               background: #f8f9fa;
               border-radius: 8px;
             }
-            .invoice-table { 
-              width: 100%; 
-              border-collapse: collapse; 
-              margin-bottom: 40px;
+            .items-table {
+              width: 100%;
+              border-collapse: collapse;
+              margin-bottom: 30px;
               border-radius: 8px;
               overflow: hidden;
               box-shadow: 0 2px 10px rgba(0,0,0,0.1);
             }
-            .invoice-table th, .invoice-table td { 
-              padding: 15px; 
-              text-align: left; 
+            .items-table th,
+            .items-table td {
+              padding: 15px;
+              text-align: left;
+              border-bottom: 1px solid #e9ecef;
             }
-            .invoice-table th {
+            .items-table th {
               background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
               color: white;
               font-weight: 600;
             }
-            .invoice-table tr:nth-child(even) {
+            .items-table tr:hover {
               background-color: #f8f9fa;
             }
-            .totals { 
-              margin-top: 30px; 
-              text-align: right; 
-              font-size: 16px;
+            .totals {
+              margin-top: 30px;
+              text-align: right;
             }
             .totals table {
               margin-left: auto;
               border-collapse: collapse;
-              border-radius: 8px;
-              overflow: hidden;
-              box-shadow: 0 2px 10px rgba(0,0,0,0.1);
             }
             .totals td {
-              padding: 12px 20px;
-              background: white;
+              padding: 10px 20px;
+              border-bottom: 1px solid #e9ecef;
             }
-            .totals .total-row {
+            .total-row {
               font-weight: bold;
-              font-size: 18px;
-              background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-              color: white;
+              font-size: 1.2em;
+              border-top: 2px solid #667eea;
             }
-            .footer { 
-              margin-top: 40px; 
-              font-size: 12px; 
-              color: #666;
+            .notes, .footer {
+              margin-top: 40px;
               padding: 20px;
               background: #f8f9fa;
               border-radius: 8px;
             }
-            .status {
-              display: inline-block;
-              padding: 8px 16px;
-              border-radius: 20px;
-              font-size: 12px;
-              font-weight: bold;
-              text-transform: uppercase;
-            }
-            .status.draft { background-color: #f0f0f0; color: #666; }
-            .status.sent { background-color: #e3f2fd; color: #1976d2; }
-            .status.accepted { background-color: #e8f5e8; color: #388e3c; }
-            .status.paid { background-color: #e8f5e8; color: #388e3c; }
           </style>
         </head>
         <body>
           <div class="container">
             <div class="header">
-              {{#if logo_url}}
-              <img src="{{logo_url}}" alt="Company Logo" class="logo">
-              {{/if}}
-              <h1>{{org_name}}</h1>
-              <p>{{org_address}}</p>
-              {{#if org_phone}}<p>Phone: {{org_phone}}</p>{{/if}}
-              {{#if org_email}}<p>Email: {{org_email}}</p>{{/if}}
+              <img src="LOGO_PLACEHOLDER" alt="Logo" class="logo">
+              <h1>ORG_NAME_PLACEHOLDER</h1>
+              <p>ORG_ADDRESS_PLACEHOLDER</p>
             </div>
             
             <div class="content">
               <div class="document-info">
                 <div>
-                  <h2>{{document_type}} #{{number}}</h2>
-                  <p><strong>Date:</strong> {{date}}</p>
-                  {{#if due_date}}<p><strong>Due Date:</strong> {{due_date}}</p>{{/if}}
-                </div>
-                <div>
-                  <span class="status {{status}}">{{status}}</span>
+                  <h2>DOCUMENT_TYPE_PLACEHOLDER #NUMBER_PLACEHOLDER</h2>
+                  <p><strong>Date:</strong> DATE_PLACEHOLDER</p>
                 </div>
               </div>
               
               <div class="client-info">
                 <h3>Bill To:</h3>
-                <p><strong>{{client_name}}</strong></p>
-                <p>{{client_address}}</p>
-                {{#if client_phone}}<p>Phone: {{client_phone}}</p>{{/if}}
-                {{#if client_email}}<p>Email: {{client_email}}</p>{{/if}}
+                <p><strong>CLIENT_NAME_PLACEHOLDER</strong></p>
+                <p>CLIENT_ADDRESS_PLACEHOLDER</p>
               </div>
               
-              <table class="invoice-table">
+              <table class="items-table">
                 <thead>
                   <tr>
                     <th>Description</th>
@@ -452,58 +467,30 @@ export class PDFGenerator {
                   </tr>
                 </thead>
                 <tbody>
-                  {{#items}}
-                  <tr>
-                    <td>{{description}}</td>
-                    <td>{{quantity}}</td>
-                    <td>${{unit_price}}</td>
-                    <td>${{line_total}}</td>
-                  </tr>
-                  {{/items}}
+                  ITEMS_PLACEHOLDER
                 </tbody>
               </table>
               
               <div class="totals">
                 <table>
-                  <tr><td>Subtotal:</td><td>${{subtotal}}</td></tr>
-                  {{#if discount_amt}}
-                  <tr><td>Discount:</td><td>-${{discount_amt}}</td></tr>
-                  {{/if}}
-                  {{#if tax_total}}
-                  <tr><td>Tax:</td><td>${{tax_total}}</td></tr>
-                  {{/if}}
+                  <tr><td>Subtotal:</td><td>$SUBTOTAL_PLACEHOLDER</td></tr>
+                  DISCOUNT_PLACEHOLDER
+                  TAX_PLACEHOLDER
                   <tr class="total-row">
                     <td>Total:</td>
-                    <td>${{total}}</td>
+                    <td>$TOTAL_PLACEHOLDER</td>
                   </tr>
-                  {{#if balance_due}}
-                  <tr class="total-row">
-                    <td>Balance Due:</td>
-                    <td>${{balance_due}}</td>
-                  </tr>
-                  {{/if}}
+                  BALANCE_DUE_PLACEHOLDER
                 </table>
               </div>
               
-              {{#if notes}}
-              <div class="notes">
-                <h3>Notes:</h3>
-                <p>{{notes}}</p>
-              </div>
-              {{/if}}
-              
-              {{#if terms}}
-              <div class="footer">
-                <h3>Terms & Conditions:</h3>
-                <p>{{terms}}</p>
-              </div>
-              {{/if}}
+              NOTES_PLACEHOLDER
+              TERMS_PLACEHOLDER
             </div>
           </div>
         </body>
         </html>
-      ` /* eslint-enable @typescript-eslint/no-unused-vars */
-    }
+      `
   }
 
   /**
@@ -515,8 +502,15 @@ export class PDFGenerator {
       name: 'Ledger Pro',
       isPaid: true,
       variables: ['org_name', 'org_address', 'document_type', 'number', 'date', 'client_name', 'client_address', 'items', 'subtotal', 'tax_total', 'total', 'terms'],
-      content: /* eslint-disable @typescript-eslint/no-unused-vars */
-        `
+      content: this.getLedgerProTemplateContent()
+    }
+  }
+
+  /**
+   * Get ledger pro template content
+   */
+  private getLedgerProTemplateContent(): string {
+    return `
         <!DOCTYPE html>
         <html>
         <head>
@@ -554,91 +548,67 @@ export class PDFGenerator {
               border: 1px solid #000;
               padding: 15px;
             }
-            .invoice-table { 
-              width: 100%; 
-              border-collapse: collapse; 
+            .items-table {
+              width: 100%;
+              border-collapse: collapse;
               margin-bottom: 30px;
-              border: 2px solid #000;
+              border: 1px solid #000;
             }
-            .invoice-table th, .invoice-table td { 
-              border: 1px solid #000; 
-              padding: 8px; 
-              text-align: left; 
+            .items-table th,
+            .items-table td {
+              border: 1px solid #000;
+              padding: 10px;
+              text-align: left;
             }
-            .invoice-table th {
+            .items-table th {
               background-color: #f0f0f0;
               font-weight: bold;
             }
-            .totals { 
-              margin-top: 20px; 
-              text-align: right; 
-              font-size: 14px;
+            .totals {
+              margin-top: 20px;
+              text-align: right;
             }
             .totals table {
               margin-left: auto;
               border-collapse: collapse;
-              border: 2px solid #000;
+              border: 1px solid #000;
             }
             .totals td {
-              padding: 8px 16px;
+              padding: 10px 20px;
               border: 1px solid #000;
             }
-            .totals .total-row {
+            .total-row {
               font-weight: bold;
-              font-size: 16px;
-              background-color: #f0f0f0;
+              border-top: 2px solid #000;
             }
-            .footer { 
-              margin-top: 40px; 
-              font-size: 12px; 
-              border-top: 1px solid #000;
-              padding-top: 20px;
-            }
-            .status {
-              display: inline-block;
-              padding: 4px 8px;
+            .notes, .footer {
+              margin-top: 30px;
               border: 1px solid #000;
-              font-size: 12px;
-              font-weight: bold;
-              text-transform: uppercase;
+              padding: 15px;
             }
-            .status.draft { background-color: #f0f0f0; }
-            .status.sent { background-color: #e3f2fd; }
-            .status.accepted { background-color: #e8f5e8; }
-            .status.paid { background-color: #e8f5e8; }
           </style>
         </head>
         <body>
           <div class="header">
-            {{#if logo_url}}
-            <img src="{{logo_url}}" alt="Company Logo" class="logo">
-            {{/if}}
-            <h1>{{org_name}}</h1>
-            <p>{{org_address}}</p>
-            {{#if org_phone}}<p>Phone: {{org_phone}}</p>{{/if}}
-            {{#if org_email}}<p>Email: {{org_email}}</p>{{/if}}
+            <img src="LOGO_PLACEHOLDER" alt="Logo" class="logo">
+            <h1>ORG_NAME_PLACEHOLDER</h1>
+            <p>ORG_ADDRESS_PLACEHOLDER</p>
           </div>
           
           <div class="document-info">
             <div>
-              <h2>{{document_type}} #{{number}}</h2>
-              <p><strong>Date:</strong> {{date}}</p>
-              {{#if due_date}}<p><strong>Due Date:</strong> {{due_date}}</p>{{/if}}
-            </div>
-            <div>
-              <span class="status {{status}}">{{status}}</span>
+              <h2>DOCUMENT_TYPE_PLACEHOLDER #NUMBER_PLACEHOLDER</h2>
+              <p><strong>Date:</strong> DATE_PLACEHOLDER</p>
             </div>
           </div>
           
           <div class="client-info">
             <h3>Bill To:</h3>
-            <p><strong>{{client_name}}</strong></p>
-            <p>{{client_address}}</p>
-            {{#if client_phone}}<p>Phone: {{client_phone}}</p>{{/if}}
-            {{#if client_email}}<p>Email: {{client_email}}</p>{{/if}}
+            <p><strong>CLIENT_NAME_PLACEHOLDER</strong></p>
+            <p>CLIENT_ADDRESS_PLACEHOLDER</p>
           </div>
           
-          <table class="invoice-table">
+          <table class="items-table">
             <thead>
               <tr>
                 <th>Description</th>
@@ -648,56 +618,28 @@ export class PDFGenerator {
               </tr>
             </thead>
             <tbody>
-              {{#items}}
-              <tr>
-                <td>{{description}}</td>
-                <td>{{quantity}}</td>
-                <td>${{unit_price}}</td>
-                <td>${{line_total}}</td>
-              </tr>
-              {{/items}}
+              ITEMS_PLACEHOLDER
             </tbody>
           </table>
           
           <div class="totals">
             <table>
-              <tr><td>Subtotal:</td><td>${{subtotal}}</td></tr>
-              {{#if discount_amt}}
-              <tr><td>Discount:</td><td>-${{discount_amt}}</td></tr>
-              {{/if}}
-              {{#if tax_total}}
-              <tr><td>Tax:</td><td>${{tax_total}}</td></tr>
-              {{/if}}
+              <tr><td>Subtotal:</td><td>$SUBTOTAL_PLACEHOLDER</td></tr>
+              DISCOUNT_PLACEHOLDER
+              TAX_PLACEHOLDER
               <tr class="total-row">
                 <td>Total:</td>
-                <td>${{total}}</td>
+                <td>$TOTAL_PLACEHOLDER</td>
               </tr>
-              {{#if balance_due}}
-              <tr class="total-row">
-                <td>Balance Due:</td>
-                <td>${{balance_due}}</td>
-              </tr>
-              {{/if}}
+              BALANCE_DUE_PLACEHOLDER
             </table>
           </div>
           
-          {{#if notes}}
-          <div class="notes">
-            <h3>Notes:</h3>
-            <p>{{notes}}</p>
-          </div>
-          {{/if}}
-          
-          {{#if terms}}
-          <div class="footer">
-            <h3>Terms & Conditions:</h3>
-            <p>{{terms}}</p>
-          </div>
-          {{/if}}
+          NOTES_PLACEHOLDER
+          TERMS_PLACEHOLDER
         </body>
         </html>
-      ` /* eslint-enable @typescript-eslint/no-unused-vars */
-    }
+      `
   }
 
   /**
@@ -732,7 +674,7 @@ export class PDFGenerator {
         
         // Upload to storage if requested
         if (options.uploadToStorage) {
-          await generator.uploadPDF(uri, data, options.filename)
+          await generator.uploadPDF(uri)
         }
         
         // Share if requested
@@ -788,7 +730,7 @@ export class PDFGenerator {
   private processConditionals(html: string, data: PDFData): string {
     // Handle {{#if variable}}...{{/if}} blocks
     html = html.replace(/\{\{#if\s+(\w+)\}\}([\s\S]*?)\{\{\/if\}\}/g, (match, variable, content) => {
-      const value = (data as any)[variable]
+      const value = (data as unknown as Record<string, unknown>)[variable]
       return value ? content : ''
     })
     
@@ -798,7 +740,7 @@ export class PDFGenerator {
   /**
    * Render items array
    */
-  private renderItems(items: any[]): string {
+  private renderItems(items: Record<string, unknown>[]): string {
     return items.map(item => `
       <tr>
         <td>${item.description}</td>
@@ -812,13 +754,13 @@ export class PDFGenerator {
   /**
    * Upload PDF to storage
    */
-  private async uploadPDF(uri: string, data: PDFData, filename?: string): Promise<void> {
+  private async uploadPDF(uri: string): Promise<void> {
     try {
       const orgId = 'org-id' // This should come from context
-      const documentType = data.document_type
-      const documentId = data.number
+      // const documentType = data.document_type // unused
+      // const documentId = data.number // unused
       
-      const path = await uploadDocument(uri, orgId, documentType, documentId)
+      const path = await uploadDocument(uri, orgId, 'system')
       console.log('PDF uploaded to:', path)
     } catch (error) {
       ErrorNotifications.showFileUploadError('Failed to upload PDF to storage')
@@ -883,22 +825,22 @@ export class PDFGenerator {
   /**
    * Generate quote PDF (convenience method)
    */
-  static async generateQuotePDF(quoteData: any, options?: PDFGenerationOptions): Promise<string> {
+  static async generateQuotePDF(quoteData: Partial<PDFData>, options?: PDFGenerationOptions): Promise<string> {
     const data: PDFData = {
       document_type: 'quote',
       ...quoteData
-    }
+    } as PDFData
     return PDFGenerator.generatePDF(data, options)
   }
 
   /**
    * Generate invoice PDF (convenience method)
    */
-  static async generateInvoicePDF(invoiceData: any, options?: PDFGenerationOptions): Promise<string> {
+  static async generateInvoicePDF(invoiceData: Partial<PDFData>, options?: PDFGenerationOptions): Promise<string> {
     const data: PDFData = {
       document_type: 'invoice',
       ...invoiceData
-    }
+    } as PDFData
     return PDFGenerator.generatePDF(data, options)
   }
 }
@@ -908,22 +850,22 @@ export const PDFUtils = {
   /**
    * Generate quote PDF
    */
-  generateQuotePDF: async (quoteData: any, options?: PDFGenerationOptions): Promise<string> => {
+  generateQuotePDF: async (quoteData: Partial<PDFData>, options?: PDFGenerationOptions): Promise<string> => {
     const data: PDFData = {
       document_type: 'quote',
       ...quoteData
-    }
+    } as PDFData
     return PDFGenerator.generatePDF(data, options)
   },
 
   /**
    * Generate invoice PDF
    */
-  generateInvoicePDF: async (invoiceData: any, options?: PDFGenerationOptions): Promise<string> => {
+  generateInvoicePDF: async (invoiceData: Partial<PDFData>, options?: PDFGenerationOptions): Promise<string> => {
     const data: PDFData = {
       document_type: 'invoice',
       ...invoiceData
-    }
+    } as PDFData
     return PDFGenerator.generatePDF(data, options)
   },
 

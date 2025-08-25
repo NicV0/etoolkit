@@ -197,7 +197,7 @@ export const getJobStoragePath = (orgId: string, clientId: string, jobId: string
  */
 export const validateStoragePath = (path: string): boolean => {
   // Check for valid characters
-  const validPathRegex = /^[a-zA-Z0-9\-_\/.]+$/
+  const validPathRegex = /^[a-zA-Z0-9\\-_/.]+$/
   if (!validPathRegex.test(path)) {
     return false
   }

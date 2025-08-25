@@ -1,7 +1,7 @@
 import { supabase } from '../supabase'
 import { logActivity } from '../db/mutations'
 import { uploadDocument, getSignedUrl, deleteDocument } from '../storage'
-import { z } from 'zod'
+// import { z } from 'zod'
 import * as FileSystem from 'expo-file-system'
 
 export interface DocumentFilters {
@@ -23,7 +23,6 @@ export interface DocumentWithUrl {
   size: number
   uploaded_by: string
   created_at: string
-  updated_at: string
   signed_url?: string
 }
 
@@ -34,13 +33,13 @@ export interface UploadResult {
 }
 
 // Document validation schema
-const documentSchema = z.object({
-  title: z.string().min(1, 'Title is required').max(100, 'Title too long'),
-  client_id: z.string().uuid('Invalid client ID'),
-  job_id: z.string().uuid('Invalid job ID').optional(),
-  mime: z.string().min(1, 'MIME type is required'),
-  size: z.number().positive('Size must be positive')
-})
+// const documentSchema = z.object({
+//   title: z.string().min(1, 'Title is required').max(100, 'Title too long'),
+//   client_id: z.string().uuid('Invalid client ID'),
+//   job_id: z.string().uuid('Invalid job ID').optional(),
+//   mime: z.string().min(1, 'MIME type is required'),
+//   size: z.number().positive('Size must be positive')
+// })
 
 export const documentAPI = {
   // Upload document from URI
@@ -56,11 +55,11 @@ export const documentAPI = {
   ): Promise<UploadResult> => {
     try {
       // Get file info
-      const fileName = uri.split('/').pop() || 'document'
+      // const fileName = uri.split('/').pop() || 'document'
       const mimeType = metadata.mime || 'application/octet-stream'
       
       // Upload to storage
-      const uploadResult = await uploadDocument(uri, orgId, clientId, metadata.jobId)
+      const uploadResult = await uploadDocument(uri, orgId, clientId)
       
       // Get actual file size using expo-file-system
       const fileInfo = await FileSystem.getInfoAsync(uri)

@@ -50,12 +50,12 @@ export class KitAI {
       // Check privacy consent
       const hasConsent = await privacyControls.hasConsent();
       if (!hasConsent) {
-        console.log('KitAI: Privacy consent not given, using default settings');
+        if (__DEV__) console.log('KitAI: Privacy consent not given, using default settings');
       }
       
-      console.log('KitAI: Initialized successfully');
+      if (__DEV__) console.log('KitAI: Initialized successfully');
     } catch (error) {
-      console.error('KitAI: Failed to initialize:', error);
+      if (__DEV__) console.error('KitAI: Failed to initialize:', error);
       throw error;
     }
   }
@@ -63,7 +63,7 @@ export class KitAI {
   /**
    * Process a natural language query
    */
-  async processQuery(query: string, orgId: string): Promise<any> {
+  async processQuery(query: string, orgId: string): Promise<unknown> {
     try {
       // Check privacy settings
       const allowDataCollection = await privacyControls.isDataCollectionAllowed();
@@ -102,7 +102,7 @@ export class KitAI {
   /**
    * Search for clients
    */
-  async searchClients(query: string, orgId: string): Promise<any[]> {
+  async searchClients(query: string, orgId: string): Promise<unknown[]> {
     try {
       return await kitAITools.searchClients(query, orgId);
     } catch (error) {
@@ -114,7 +114,7 @@ export class KitAI {
   /**
    * Search for pricebook items
    */
-  async searchPricebook(query: string, orgId: string): Promise<any[]> {
+  async searchPricebook(query: string, orgId: string): Promise<unknown[]> {
     try {
       return await kitAITools.searchPricebook(query, orgId);
     } catch (error) {
@@ -126,7 +126,7 @@ export class KitAI {
   /**
    * Suggest line items for quotes/invoices
    */
-  async suggestLineItems(description: string, orgId: string): Promise<any[]> {
+  async suggestLineItems(description: string, orgId: string): Promise<unknown[]> {
     try {
       return await kitAITools.suggestLineItems(description, orgId);
     } catch (error) {
@@ -138,7 +138,7 @@ export class KitAI {
   /**
    * Create a draft quote
    */
-  async createDraftQuote(clientId: string, items: any[]): Promise<any> {
+  async createDraftQuote(clientId: string, items: import('./tools').DraftSuggestion[]): Promise<unknown> {
     try {
       return await kitAITools.createDraftQuote(clientId, items);
     } catch (error) {
@@ -152,7 +152,7 @@ export class KitAI {
    */
   async indexData(entities: Array<{
     type: 'client' | 'pricebook' | 'quote' | 'invoice';
-    data: any;
+    data: Record<string, unknown>;
   }>): Promise<void> {
     try {
       await kitAISQLite.bulkIndex(entities);
@@ -164,21 +164,21 @@ export class KitAI {
   /**
    * Get privacy settings
    */
-  async getPrivacySettings(): Promise<any> {
+  async getPrivacySettings(): Promise<unknown> {
     return await privacyControls.getPrivacySettings();
   }
 
   /**
    * Update privacy settings
    */
-  async updatePrivacySettings(settings: any): Promise<void> {
+  async updatePrivacySettings(settings: Partial<import('./privacy').PrivacySettings>): Promise<void> {
     await privacyControls.updatePrivacySettings(settings);
   }
 
   /**
    * Get search index statistics
    */
-  async getSearchStats(): Promise<any> {
+  async getSearchStats(): Promise<unknown> {
     return await kitAISQLite.getIndexStats();
   }
 

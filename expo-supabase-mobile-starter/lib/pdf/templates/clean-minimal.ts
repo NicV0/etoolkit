@@ -1,7 +1,7 @@
-import { PDFTemplate } from '../generators';
+// import { PDFTemplate } from '../generators'; // unused
 
 // Base64 encoded default logo (simple placeholder)
-const DEFAULT_LOGO = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIwIiBoZWlnaHQ9IjQwIiB2aWV3Qm94PSIwIDAgMTIwIDQwIiBmaWxsPSJub25lIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPgo8cmVjdCB3aWR0aD0iMTIwIiBoZWlnaHQ9IjQwIiByeD0iNCIgZmlsbD0iIzNiODJmNiIvPgo8dGV4dCB4PSI2MCIgeT0iMjUiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxNCIgZmlsbD0id2hpdGUiIHRleHQtYW5jaG9yPSJtaWRkbGUiPmVMb2dvPC90ZXh0Pgo8L3N2Zz4K';
+// const DEFAULT_LOGO = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIwIiBoZWlnaHQ9IjQwIiB2aWV3Qm94PSIwIDAgMTIwIDQwIiBmaWxsPSJub25lIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPgo8cmVjdCB3aWR0aD0iMTIwIiBoZWlnaHQ9IjQwIiByeD0iNCIgZmlsbD0iIzNiODJmNiIvPgo8dGV4dCB4PSI2MCIgeT0iMjUiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxNCIgZmlsbD0id2hpdGUiIHRleHQtYW5jaG9yPSJtaWRkbGUiPmVMb2dvPC90ZXh0Pgo8L3N2Zz4K'; // unused
 
 export const cleanMinimalTemplate = {
   id: 'clean-minimal',
@@ -25,7 +25,7 @@ export const cleanMinimalTemplate = {
         .header { 
           text-align: center; 
           margin-bottom: 30px; 
-          border-bottom: 2px solid #333;
+          border-bottom: 2px solid #eee;
           padding-bottom: 20px;
         }
         .logo { 
@@ -34,152 +34,98 @@ export const cleanMinimalTemplate = {
           margin-bottom: 10px;
         }
         .document-info {
-          display: flex;
-          justify-content: space-between;
-          margin-bottom: 30px;
+          background: #f9f9f9;
+          padding: 15px;
+          border-radius: 5px;
+          margin-bottom: 20px;
         }
         .client-info {
           margin-bottom: 30px;
         }
-        .invoice-table { 
-          width: 100%; 
-          border-collapse: collapse; 
-          margin-bottom: 30px;
+        .items-table {
+          width: 100%;
+          border-collapse: collapse;
+          margin-bottom: 20px;
         }
-        .invoice-table th, .invoice-table td { 
-          border: 1px solid #ddd; 
-          padding: 12px; 
-          text-align: left; 
+        .items-table th,
+        .items-table td {
+          border: 1px solid #ddd;
+          padding: 12px;
+          text-align: left;
         }
-        .invoice-table th {
-          background-color: #f8f9fa;
+        .items-table th {
+          background-color: #f5f5f5;
           font-weight: bold;
         }
-        .totals { 
-          margin-top: 20px; 
-          text-align: right; 
-          font-size: 16px;
+        .totals {
+          margin-top: 20px;
         }
         .totals table {
-          margin-left: auto;
+          width: 100%;
           border-collapse: collapse;
         }
         .totals td {
-          padding: 8px 16px;
-          border-bottom: 1px solid #ddd;
+          padding: 8px;
+          border-bottom: 1px solid #eee;
         }
-        .totals .total-row {
+        .total-row {
           font-weight: bold;
-          font-size: 18px;
-          border-top: 2px solid #333;
+          font-size: 1.1em;
         }
-        .footer { 
-          margin-top: 40px; 
-          font-size: 12px; 
-          color: #666;
-          border-top: 1px solid #ddd;
+        .notes, .footer {
+          margin-top: 30px;
           padding-top: 20px;
+          border-top: 1px solid #eee;
         }
-        .status {
-          display: inline-block;
-          padding: 4px 12px;
-          border-radius: 4px;
-          font-size: 12px;
-          font-weight: bold;
-          text-transform: uppercase;
-        }
-        .status.draft { background-color: #f0f0f0; color: #666; }
-        .status.sent { background-color: #e3f2fd; color: #1976d2; }
-        .status.accepted { background-color: #e8f5e8; color: #388e3c; }
-        .status.paid { background-color: #e8f5e8; color: #388e3c; }
       </style>
     </head>
     <body>
       <div class="header">
-        {{#if logo_url}}
-        <img src="{{logo_url}}" alt="Company Logo" class="logo">
-        {{/if}}
-        <h1>{{org_name}}</h1>
-        <p>{{org_address}}</p>
-        {{#if org_phone}}<p>Phone: {{org_phone}}</p>{{/if}}
-        {{#if org_email}}<p>Email: {{org_email}}</p>{{/if}}
+        <img src="LOGO_PLACEHOLDER" alt="Logo" class="logo">
+        <h1>ORG_NAME_PLACEHOLDER</h1>
+        <p>ORG_ADDRESS_PLACEHOLDER</p>
       </div>
       
       <div class="document-info">
-        <div>
-          <h2>{{document_type}} #{{number}}</h2>
-          <p><strong>Date:</strong> {{date}}</p>
-          {{#if due_date}}<p><strong>Due Date:</strong> {{due_date}}</p>{{/if}}
-        </div>
-        <div>
-          <span class="status {{status}}">{{status}}</span>
-        </div>
+        <h2>DOCUMENT_TYPE_PLACEHOLDER #NUMBER_PLACEHOLDER</h2>
+        <p><strong>Date:</strong> DATE_PLACEHOLDER</p>
       </div>
       
       <div class="client-info">
         <h3>Bill To:</h3>
-        <p><strong>{{client_name}}</strong></p>
-        <p>{{client_address}}</p>
-        {{#if client_phone}}<p>Phone: {{client_phone}}</p>{{/if}}
-        {{#if client_email}}<p>Email: {{client_email}}</p>{{/if}}
+        <p><strong>CLIENT_NAME_PLACEHOLDER</strong></p>
+        <p>CLIENT_ADDRESS_PLACEHOLDER</p>
       </div>
       
-      <table class="invoice-table">
+      <table class="items-table">
         <thead>
           <tr>
             <th>Description</th>
-            <th>Quantity</th>
+            <th>Qty</th>
             <th>Unit Price</th>
             <th>Total</th>
           </tr>
         </thead>
         <tbody>
-          {{#items}}
-          <tr>
-            <td>{{description}}</td>
-            <td>{{quantity}}</td>
-            <td>${{unit_price}}</td>
-            <td>${{line_total}}</td>
-          </tr>
-          {{/items}}
+          ITEMS_PLACEHOLDER
         </tbody>
       </table>
       
       <div class="totals">
         <table>
-          <tr><td>Subtotal:</td><td>${{subtotal}}</td></tr>
-          {{#if discount_amt}}
-          <tr><td>Discount:</td><td>-${{discount_amt}}</td></tr>
-          {{/if}}
-          {{#if tax_total}}
-          <tr><td>Tax:</td><td>${{tax_total}}</td></tr>
-          {{/if}}
+          <tr><td>Subtotal:</td><td>$SUBTOTAL_PLACEHOLDER</td></tr>
+          DISCOUNT_PLACEHOLDER
+          TAX_PLACEHOLDER
           <tr class="total-row">
             <td>Total:</td>
-            <td>${{total}}</td>
+            <td>$TOTAL_PLACEHOLDER</td>
           </tr>
-          {{#if balance_due}}
-          <tr class="total-row">
-            <td>Balance Due:</td>
-            <td>${{balance_due}}</td>
-          </tr>
-          {{/if}}
+          BALANCE_DUE_PLACEHOLDER
         </table>
       </div>
       
-      {{#if notes}}
-      <div class="notes">
-        <h3>Notes:</h3>
-        <p>{{notes}}</p>
-      </div>
-      {{/if}}
-      
-      {{#if terms}}
-      <div class="footer">
-        <h3>Terms & Conditions:</h3>
-        <p>{{terms}}</p>
-      </div>
-      {{/if}}
+      NOTES_PLACEHOLDER
+      TERMS_PLACEHOLDER
     </body>
     </html>
   `

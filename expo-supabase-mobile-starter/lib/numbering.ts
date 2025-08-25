@@ -1,5 +1,5 @@
 import { supabase } from './supabase'
-import { etoolkit } from './supabase'
+// import { etoolkit } from './supabase'
 
 export interface NumberingSettings {
   prefix: string
@@ -19,15 +19,26 @@ export interface GeneratedNumber {
  * Get organization numbering settings
  */
 export const getNumberingSettings = async (orgId: string, type: 'quote' | 'invoice') => {
-  const { data: settings } = await supabase
-    .from('settings')
-    .select('numbering_prefix_quote, numbering_prefix_invoice')
-    .eq('org_id', orgId)
-    .single()
+  try {
+    const { data } = await supabase
+      .from('settings')
+      .select('numbering_prefix_quote, numbering_prefix_invoice')
+      .eq('org_id', orgId)
+      .single()
+
+    if (data) {
+      return {
+        prefix: data.numbering_prefix_quote || 'Q',
+        startNumber: 1
+      }
+    }
+  } catch {
+    // Handle error silently
+  }
 
   const prefix = type === 'quote' 
-    ? settings?.numbering_prefix_quote || 'Q'
-    : settings?.numbering_prefix_invoice || 'INV'
+    ? 'Q' // Fallback to default if org settings not found
+    : 'INV' // Fallback to default if org settings not found
 
   return {
     prefix,
@@ -62,11 +73,11 @@ export const generateNextNumber = async (
     .limit(1)
 
   // Add date filters if resetting monthly or yearly
-  if (settings.resetMonthly) {
+  if ('resetMonthly' in settings && settings.resetMonthly) {
     const startOfMonth = new Date(currentYear, currentMonth - 1, 1).toISOString()
     const endOfMonth = new Date(currentYear, currentMonth, 0).toISOString()
     query = query.gte('created_at', startOfMonth).lte('created_at', endOfMonth)
-  } else if (settings.resetYearly) {
+  } else if ('resetYearly' in settings && settings.resetYearly) {
     const startOfYear = new Date(currentYear, 0, 1).toISOString()
     const endOfYear = new Date(currentYear, 11, 31).toISOString()
     query = query.gte('created_at', startOfYear).lte('created_at', endOfYear)
@@ -78,12 +89,12 @@ export const generateNextNumber = async (
 
   if (latest && latest.length > 0) {
     const latestNumber = latest[0].number
-    const extractedSequence = extractSequenceFromNumber(latestNumber, settings)
+    const extractedSequence = extractSequenceFromNumber(latestNumber, settings as NumberingSettings)
     nextSequence = extractedSequence + 1
   }
 
   // Generate the formatted number
-  const formattedNumber = formatNumber(nextSequence, settings, currentYear, currentMonth)
+  const formattedNumber = formatNumber(nextSequence, settings as NumberingSettings, currentYear, currentMonth)
 
   return {
     number: formattedNumber,
@@ -190,7 +201,7 @@ export const checkNumberExists = async (
 ): Promise<boolean> => {
   const table = type === 'quote' ? 'quotes' : 'invoices'
   
-  const { data, error } = await supabase
+  const { data } = await supabase
     .from(table)
     .select('id')
     .eq('org_id', orgId)
@@ -230,7 +241,7 @@ export const updateNumberingSettings = async (
   orgId: string,
   settings: Partial<NumberingSettings>
 ): Promise<void> => {
-  const updates: any = {}
+  const updates: Record<string, unknown> = {}
   
   if (settings.prefix) {
     updates.numbering_prefix_quote = settings.prefix
@@ -263,17 +274,17 @@ export const getNumberingStats = async (orgId: string, type: 'quote' | 'invoice'
   const currentMonth = new Date().getMonth() + 1
 
   const stats = {
-    total: data.length,
-    thisYear: data.filter(item => {
+    total: data?.length ?? 0,
+    thisYear: data?.filter(item => {
       const itemYear = new Date(item.created_at).getFullYear()
       return itemYear === currentYear
-    }).length,
-    thisMonth: data.filter(item => {
+    }).length ?? 0,
+    thisMonth: data?.filter(item => {
       const itemDate = new Date(item.created_at)
       return itemDate.getFullYear() === currentYear && 
              itemDate.getMonth() + 1 === currentMonth
-    }).length,
-    latestNumber: data[0]?.number || 'None'
+    }).length ?? 0,
+    latestNumber: data?.[0]?.number || 'None'
   }
 
   return stats

@@ -1,669 +1,412 @@
 import NetInfo from '@react-native-community/netinfo'
-import { supabase, etoolkit } from './supabase'
 import { 
-  upsertRecord, 
-  getRecords, 
-  getRecord, 
-  deleteRecord,
-  addToSyncQueue,
-  updateSyncStatus
+  initDatabase,
+  insertData,
+  updateData,
+  deleteData,
+  queryData,
+  // getData,
+  countData,
+  executeTransaction
 } from './sqlite'
-import { performSync } from './sync'
 
-// Network status
+// Types for offline data management
+interface OfflineRecord {
+  id: string
+  synced: boolean
+  created_at: string
+  updated_at: string
+}
+
+interface OfflineOptions {
+  preferOnline?: boolean
+  fallbackToLocal?: boolean
+  limit?: number
+}
+
+interface PaginatedResult<T> {
+  data: T[]
+  total: number
+  page: number
+  limit: number
+  hasMore: boolean
+}
+
+// Network state management
 let isOnline = true
+let networkListeners: Array<(online: boolean) => void> = []
 
-/**
- * Initialize offline data layer
- */
-export const initOfflineData = async (): Promise<void> => {
-  // Monitor network status
-  NetInfo.addEventListener('connectionChange', handleNetworkChange)
-  
-  // Initial network check
-  const netInfo = await NetInfo.fetch()
-  isOnline = netInfo.isConnected || false
-}
-
-/**
- * Handle network status changes
- */
-const handleNetworkChange = (state: any): void => {
+const handleNetworkChange = (state: { isConnected: boolean | null; isInternetReachable?: boolean | null }) => {
   const wasOnline = isOnline
-  isOnline = state.isConnected || false
+  isOnline = (state.isConnected ?? false) && (state.isInternetReachable ?? true)
   
-  if (!wasOnline && isOnline) {
-    // Came back online, trigger sync
-    performSync()
+  if (wasOnline !== isOnline) {
+    networkListeners.forEach(listener => listener(isOnline))
+  }
+}
+
+// Initialize network monitoring
+NetInfo.addEventListener(handleNetworkChange)
+
+export const OfflineDataManager = {
+  /**
+   * Check if currently online
+   */
+  isOnline: () => isOnline,
+
+  /**
+   * Add network state listener
+   */
+  onNetworkChange: (listener: (online: boolean) => void) => {
+    networkListeners.push(listener)
+    return () => {
+      networkListeners = networkListeners.filter(l => l !== listener)
+    }
+  },
+
+  /**
+   * Initialize offline data layer
+   */
+  initialize: async () => {
+    await initDatabase()
   }
 }
 
 /**
- * Check if currently online
+ * Base class for offline-first data layers
  */
-export const isNetworkOnline = (): boolean => {
-  return isOnline
-}
+export abstract class OfflineDataLayer<T extends OfflineRecord> {
+  protected tableName: string
 
-/**
- * Generic data operations with offline support
- */
-export class OfflineDataLayer {
-  /**
-   * Create a record
-   */
-  static async create<T>(
-    table: string,
-    data: Partial<T>,
-    options: { 
-      syncImmediately?: boolean
-      validateOnline?: boolean 
-    } = {}
-  ): Promise<T> {
-    const { syncImmediately = true, validateOnline = false } = options
-    
-    if (validateOnline && !isOnline) {
-      throw new Error('Network connection required for this operation')
-    }
-    
-    try {
-      if (isOnline) {
-        // Try online first
-        const { data: result, error } = await supabase
-          .from(table)
-          .insert(data)
-          .select()
-          .single()
-        
-        if (error) throw error
-        
-        // Store in local database
-        await upsertRecord(table, { ...result, synced: 1 })
-        
-        return result as T
-      } else {
-        // Offline mode - store locally
-        const record = {
-          ...data,
-          id: data.id || `local_${Date.now()}_${Math.random()}`,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-          synced: 0
-        }
-        
-        await upsertRecord(table, record)
-        
-        // Add to sync queue
-        await addToSyncQueue(table, record.id, 'INSERT', record)
-        
-        return record as T
-      }
-    } catch (error) {
-      // Fallback to offline mode
-      const record = {
-        ...data,
-        id: data.id || `local_${Date.now()}_${Math.random()}`,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-        synced: 0
-      }
-      
-      await upsertRecord(table, record)
-      await addToSyncQueue(table, record.id, 'INSERT', record)
-      
-      return record as T
-    }
+  constructor(tableName: string) {
+    this.tableName = tableName
   }
-  
+
   /**
-   * Update a record
+   * Create a new record
    */
-  static async update<T>(
-    table: string,
-    id: string,
-    data: Partial<T>,
-    options: { 
-      syncImmediately?: boolean
-      validateOnline?: boolean 
-    } = {}
-  ): Promise<T> {
-    const { syncImmediately = true, validateOnline = false } = options
-    
-    if (validateOnline && !isOnline) {
-      throw new Error('Network connection required for this operation')
-    }
-    
-    const updateData = {
+  async create(data: Partial<T>): Promise<T> {
+    const now = new Date().toISOString()
+    const record: T = {
       ...data,
-      updated_at: new Date().toISOString()
+      id: (data as { id?: string }).id || `local_${Date.now()}_${Math.random()}`,
+      synced: false,
+      created_at: now,
+      updated_at: now
+    } as T
+
+    await insertData(this.tableName, record as Record<string, unknown>)
+    return record
+  }
+
+  /**
+   * Update an existing record
+   */
+  async update(id: string, data: Partial<T>): Promise<T> {
+    const now = new Date().toISOString()
+    const updates = {
+      ...data,
+      synced: false,
+      updated_at: now
+    }
+
+    await updateData(this.tableName, updates, { id })
+    
+    const updated = await this.get(id)
+    if (!updated) {
+      throw new Error(`Record ${id} not found`)
     }
     
-    try {
-      if (isOnline) {
-        // Try online first
-        const { data: result, error } = await supabase
-          .from(table)
-          .update(updateData)
-          .eq('id', id)
-          .select()
-          .single()
-        
-        if (error) throw error
-        
-        // Update local database
-        await upsertRecord(table, { ...result, synced: 1 })
-        
-        return result as T
-      } else {
-        // Offline mode - update locally
-        const existing = await getRecord(table, { id })
-        if (!existing) {
-          throw new Error(`Record not found: ${table}:${id}`)
-        }
-        
-        const updatedRecord = {
-          ...existing,
-          ...updateData,
-          synced: 0
-        }
-        
-        await upsertRecord(table, updatedRecord)
-        await addToSyncQueue(table, id, 'UPDATE', updatedRecord)
-        
-        return updatedRecord as T
-      }
-    } catch (error) {
-      // Fallback to offline mode
-      const existing = await getRecord(table, { id })
-      if (!existing) {
-        throw new Error(`Record not found: ${table}:${id}`)
-      }
-      
-      const updatedRecord = {
-        ...existing,
-        ...updateData,
-        synced: 0
-      }
-      
-      await upsertRecord(table, updatedRecord)
-      await addToSyncQueue(table, id, 'UPDATE', updatedRecord)
-      
-      return updatedRecord as T
-    }
+    return updated
   }
-  
+
   /**
    * Delete a record
    */
-  static async delete(
-    table: string,
-    id: string,
-    options: { 
-      syncImmediately?: boolean
-      validateOnline?: boolean 
-    } = {}
-  ): Promise<void> {
-    const { syncImmediately = true, validateOnline = false } = options
-    
-    if (validateOnline && !isOnline) {
-      throw new Error('Network connection required for this operation')
-    }
-    
-    try {
-      if (isOnline) {
-        // Try online first
-        const { error } = await supabase
-          .from(table)
-          .delete()
-          .eq('id', id)
-        
-        if (error) throw error
-        
-        // Remove from local database
-        await deleteRecord(table, { id })
-      } else {
-        // Offline mode - mark for deletion
-        await deleteRecord(table, { id })
-        await addToSyncQueue(table, id, 'DELETE')
-      }
-    } catch (error) {
-      // Fallback to offline mode
-      await deleteRecord(table, { id })
-      await addToSyncQueue(table, id, 'DELETE')
-    }
+  async delete(id: string): Promise<void> {
+    await deleteData(this.tableName, { id })
   }
-  
+
   /**
    * Get a single record
    */
-  static async get<T>(
-    table: string,
-    id: string,
-    options: { 
-      preferOnline?: boolean
-      fallbackToLocal?: boolean 
-    } = {}
-  ): Promise<T | null> {
-    const { preferOnline = true, fallbackToLocal = true } = options
-    
-    try {
-      if (isOnline && preferOnline) {
-        // Try online first
-        const { data, error } = await supabase
-          .from(table)
-          .select('*')
-          .eq('id', id)
-          .single()
-        
-        if (!error && data) {
-          // Update local cache
-          await upsertRecord(table, { ...data, synced: 1 })
-          return data as T
-        }
-      }
-      
-      if (fallbackToLocal) {
-        // Fallback to local database
-        const localRecord = await getRecord(table, { id })
-        return localRecord as T
-      }
-      
-      return null
-    } catch (error) {
-      if (fallbackToLocal) {
-        const localRecord = await getRecord(table, { id })
-        return localRecord as T
-      }
-      return null
-    }
+  async get(id: string): Promise<T | null> {
+    const results = await queryData<T>(this.tableName, ['*'], { id }, undefined, 1)
+    return results.length > 0 ? results[0] : null
   }
-  
+
   /**
-   * Get multiple records
+   * List records with filtering and pagination
    */
-  static async list<T>(
-    table: string,
-    where?: Record<string, any>,
-    orderBy?: string,
-    options: { 
-      preferOnline?: boolean
-      fallbackToLocal?: boolean
-      limit?: number 
-    } = {}
-  ): Promise<T[]> {
-    const { preferOnline = true, fallbackToLocal = true, limit } = options
+  async list(
+    filters: Record<string, unknown> = {},
+    options: OfflineOptions = {}
+  ): Promise<PaginatedResult<T>> {
+    const { limit = 50 } = options
     
-    try {
-      if (isOnline && preferOnline) {
-        // Try online first
-        let query = supabase.from(table).select('*')
-        
-        if (where) {
-          Object.entries(where).forEach(([key, value]) => {
-            query = query.eq(key, value)
-          })
-        }
-        
-        if (orderBy) {
-          query = query.order(orderBy)
-        }
-        
-        if (limit) {
-          query = query.limit(limit)
-        }
-        
-        const { data, error } = await query
-        
-        if (!error && data) {
-          // Update local cache
-          for (const record of data) {
-            await upsertRecord(table, { ...record, synced: 1 })
-          }
-          return data as T[]
-        }
-      }
-      
-      if (fallbackToLocal) {
-        // Fallback to local database
-        const localRecords = await getRecords(table, where, orderBy)
-        return localRecords as T[]
-      }
-      
-      return []
-    } catch (error) {
-      if (fallbackToLocal) {
-        const localRecords = await getRecords(table, where, orderBy)
-        return localRecords as T[]
-      }
-      return []
+    const results = await queryData<T>(
+      this.tableName,
+      ['*'],
+      filters,
+      'created_at DESC',
+      limit
+    )
+    
+    const total = await countData(this.tableName, filters)
+    
+    return {
+      data: results,
+      total,
+      page: 1,
+      limit,
+      hasMore: total > limit
     }
   }
-  
+
   /**
    * Search records
    */
-  static async search<T>(
-    table: string,
-    searchTerm: string,
-    searchFields: string[],
-    options: { 
-      preferOnline?: boolean
-      fallbackToLocal?: boolean
-      limit?: number 
-    } = {}
-  ): Promise<T[]> {
-    const { preferOnline = true, fallbackToLocal = true, limit = 50 } = options
+  async search(query: string, fields: string[]): Promise<T[]> {
+    // Simple search implementation - in production, you'd use full-text search
+    const allRecords = await queryData<T>(this.tableName)
     
-    try {
-      if (isOnline && preferOnline) {
-        // Try online search
-        let query = supabase.from(table).select('*')
-        
-        // Build search conditions
-        const searchConditions = searchFields.map(field => 
-          `${field}.ilike.%${searchTerm}%`
-        )
-        
-        if (searchConditions.length > 0) {
-          query = query.or(searchConditions.join(','))
-        }
-        
-        if (limit) {
-          query = query.limit(limit)
-        }
-        
-        const { data, error } = await query
-        
-        if (!error && data) {
-          // Update local cache
-          for (const record of data) {
-            await upsertRecord(table, { ...record, synced: 1 })
-          }
-          return data as T[]
-        }
-      }
-      
-      if (fallbackToLocal) {
-        // Fallback to local search (basic implementation)
-        const localRecords = await getRecords(table)
-        const filtered = localRecords.filter(record => 
-          searchFields.some(field => 
-            record[field]?.toLowerCase().includes(searchTerm.toLowerCase())
-          )
-        )
-        return filtered.slice(0, limit) as T[]
-      }
-      
-      return []
-    } catch (error) {
-      if (fallbackToLocal) {
-        const localRecords = await getRecords(table)
-        const filtered = localRecords.filter(record => 
-          searchFields.some(field => 
-            record[field]?.toLowerCase().includes(searchTerm.toLowerCase())
-          )
-        )
-        return filtered.slice(0, limit) as T[]
-      }
-      return []
-    }
+    const filtered = allRecords.filter(record =>
+      fields.some(field => {
+        const value = (record as Record<string, unknown>)[field]
+        return value && value.toString().toLowerCase().includes(query.toLowerCase())
+      })
+    )
+    
+    return filtered
   }
-  
+
   /**
-   * Count records
+   * Get unsynced records
    */
-  static async count(
-    table: string,
-    where?: Record<string, any>,
-    options: { 
-      preferOnline?: boolean
-      fallbackToLocal?: boolean 
-    } = {}
-  ): Promise<number> {
-    const { preferOnline = true, fallbackToLocal = true } = options
-    
-    try {
-      if (isOnline && preferOnline) {
-        // Try online count
-        let query = supabase.from(table).select('*', { count: 'exact', head: true })
-        
-        if (where) {
-          Object.entries(where).forEach(([key, value]) => {
-            query = query.eq(key, value)
-          })
-        }
-        
-        const { count, error } = await query
-        
-        if (!error && count !== null) {
-          return count
-        }
-      }
-      
-      if (fallbackToLocal) {
-        // Fallback to local count
-        const records = await getRecords(table, where)
-        return records.length
-      }
-      
-      return 0
-    } catch (error) {
-      if (fallbackToLocal) {
-        const records = await getRecords(table, where)
-        return records.length
-      }
-      return 0
-    }
+  async getUnsynced(): Promise<T[]> {
+    return await queryData<T>(this.tableName, ['*'], { synced: false })
   }
-  
+
+  /**
+   * Mark record as synced
+   */
+  async markSynced(id: string): Promise<void> {
+    await updateData(this.tableName, { synced: true }, { id })
+  }
+
   /**
    * Bulk operations
    */
-  static async bulkCreate<T>(
-    table: string,
-    records: Partial<T>[],
-    options: { 
-      syncImmediately?: boolean
-      validateOnline?: boolean 
-    } = {}
-  ): Promise<T[]> {
-    const { syncImmediately = true, validateOnline = false } = options
+  async bulkCreate(records: Partial<T>[]): Promise<T[]> {
+    const created: T[] = []
     
-    if (validateOnline && !isOnline) {
-      throw new Error('Network connection required for this operation')
-    }
+    await executeTransaction([
+      async () => {
+        for (const record of records) {
+          const createdRecord = await this.create(record)
+          created.push(createdRecord)
+        }
+      }
+    ])
     
-    const results: T[] = []
-    
-    for (const record of records) {
-      const result = await this.create(table, record, { syncImmediately: false })
-      results.push(result)
-    }
-    
-    if (syncImmediately && isOnline) {
-      await performSync()
-    }
-    
-    return results
+    return created
   }
-  
-  static async bulkUpdate<T>(
-    table: string,
-    updates: { id: string; data: Partial<T> }[],
-    options: { 
-      syncImmediately?: boolean
-      validateOnline?: boolean 
-    } = {}
-  ): Promise<T[]> {
-    const { syncImmediately = true, validateOnline = false } = options
+
+  async bulkUpdate(updates: Array<{ id: string; data: Partial<T> }>): Promise<T[]> {
+    const updated: T[] = []
     
-    if (validateOnline && !isOnline) {
-      throw new Error('Network connection required for this operation')
-    }
+    await executeTransaction([
+      async () => {
+        for (const { id, data } of updates) {
+          const updatedRecord = await this.update(id, data)
+          updated.push(updatedRecord)
+        }
+      }
+    ])
     
-    const results: T[] = []
-    
-    for (const { id, data } of updates) {
-      const result = await this.update(table, id, data, { syncImmediately: false })
-      results.push(result)
-    }
-    
-    if (syncImmediately && isOnline) {
-      await performSync()
-    }
-    
-    return results
+    return updated
   }
-  
-  static async bulkDelete(
-    table: string,
-    ids: string[],
-    options: { 
-      syncImmediately?: boolean
-      validateOnline?: boolean 
-    } = {}
-  ): Promise<void> {
-    const { syncImmediately = true, validateOnline = false } = options
-    
-    if (validateOnline && !isOnline) {
-      throw new Error('Network connection required for this operation')
-    }
-    
-    for (const id of ids) {
-      await this.delete(table, id, { syncImmediately: false })
-    }
-    
-    if (syncImmediately && isOnline) {
-      await performSync()
-    }
+
+  async bulkDelete(ids: string[]): Promise<void> {
+    await executeTransaction([
+      async () => {
+        for (const id of ids) {
+          await this.delete(id)
+        }
+      }
+    ])
   }
 }
 
 /**
- * Specialized data layers for specific entities
+ * Client data layer with jobs relationship
  */
-export class ClientDataLayer extends OfflineDataLayer {
-  static async getClients(orgId: string, status?: string): Promise<any[]> {
-    const where: Record<string, any> = { org_id: orgId }
-    if (status) where.status = status
-    
-    return this.list('clients', where, 'name ASC')
+export class ClientDataLayer extends OfflineDataLayer<OfflineRecord & Record<string, unknown>> {
+  constructor() {
+    super('clients')
   }
-  
-  static async searchClients(orgId: string, searchTerm: string): Promise<any[]> {
-    return this.search('clients', searchTerm, ['name', 'email', 'phone'], {
-      where: { org_id: orgId }
-    })
-  }
-  
-  static async getClientWithJobs(clientId: string): Promise<any> {
-    const client = await this.get('clients', clientId)
+
+  async getWithJobs(clientId: string): Promise<(OfflineRecord & Record<string, unknown>) | null> {
+    const client = await this.get(clientId)
     if (!client) return null
-    
-    const jobs = await this.list('jobs', { client_id: clientId }, 'created_at DESC')
-    
-    return {
-      ...client,
-      jobs
-    }
+
+    const jobs = await queryData('jobs', ['*'], { client_id: clientId })
+    return { ...client, jobs }
+  }
+
+  async searchClients(query: string): Promise<(OfflineRecord & Record<string, unknown>)[]> {
+    return await this.search(query, ['name', 'email', 'phone'])
   }
 }
 
-export class QuoteDataLayer extends OfflineDataLayer {
-  static async getQuotes(orgId: string, status?: string): Promise<any[]> {
-    const where: Record<string, any> = { org_id: orgId }
-    if (status) where.status = status
-    
-    return this.list('quotes', where, 'created_at DESC')
+/**
+ * Quote data layer with items relationship
+ */
+export class QuoteDataLayer extends OfflineDataLayer<OfflineRecord & Record<string, unknown>> {
+  constructor() {
+    super('quotes')
   }
-  
-  static async getQuoteWithItems(quoteId: string): Promise<any> {
-    const quote = await this.get('quotes', quoteId)
-    if (!quote) return null
-    
-    const items = await this.list('quote_items', { quote_id: quoteId }, 'sort_order ASC')
-    
-    return {
-      ...quote,
-      items
-    }
-  }
-  
-  static async createQuoteWithItems(orgId: string, quoteData: any, items: any[]): Promise<any> {
-    const quote = await this.create('quotes', { ...quoteData, org_id: orgId })
-    
-    for (const item of items) {
-      await this.create('quote_items', { ...item, quote_id: quote.id })
-    }
-    
+
+  async createWithItems(quoteData: Record<string, unknown>, items: Record<string, unknown>[]): Promise<(OfflineRecord & Record<string, unknown>) | null> {
+    let quote!: OfflineRecord & Record<string, unknown>
+
+    await executeTransaction([
+      async () => {
+        quote = await this.create(quoteData)
+        
+        for (const item of items) {
+          await insertData('quote_items', { ...item, quote_id: quote.id })
+        }
+      }
+    ])
+
     return this.getQuoteWithItems(quote.id)
   }
-}
 
-export class InvoiceDataLayer extends OfflineDataLayer {
-  static async getInvoices(orgId: string, status?: string): Promise<any[]> {
-    const where: Record<string, any> = { org_id: orgId }
-    if (status) where.status = status
-    
-    return this.list('invoices', where, 'created_at DESC')
-  }
-  
-  static async getInvoiceWithItems(invoiceId: string): Promise<any> {
-    const invoice = await this.get('invoices', invoiceId)
-    if (!invoice) return null
-    
-    const items = await this.list('invoice_items', { invoice_id: invoiceId }, 'sort_order ASC')
-    const payments = await this.list('payments', { invoice_id: invoiceId }, 'received_at DESC')
-    
-    return {
-      ...invoice,
-      items,
-      payments
-    }
-  }
-  
-  static async recordPayment(invoiceId: string, paymentData: any): Promise<any> {
-    const payment = await this.create('payments', { ...paymentData, invoice_id: invoiceId })
-    
-    // Update invoice balance
-    const invoice = await this.get('invoices', invoiceId)
-    if (invoice) {
-      const newBalance = parseFloat(invoice.balance_due) - parseFloat(payment.amount)
-      await this.update('invoices', invoiceId, { balance_due: newBalance.toString() })
-    }
-    
-    return payment
-  }
-}
+  async getQuoteWithItems(quoteId: string): Promise<(OfflineRecord & Record<string, unknown>) | null> {
+    const quote = await this.get(quoteId)
+    if (!quote) return null
 
-export class PricebookDataLayer extends OfflineDataLayer {
-  static async getPricebookItems(orgId: string, category?: string): Promise<any[]> {
-    const where: Record<string, any> = { org_id: orgId, active: 1 }
-    if (category) where.category = category
+    const items = await queryData('quote_items', ['*'], { quote_id: quoteId })
+    return { ...quote, quote_items: items }
+  }
+
+  async convertToInvoice(quoteId: string): Promise<(OfflineRecord & Record<string, unknown>) | null> {
+    const quote = await this.getQuoteWithItems(quoteId)
+    if (!quote) throw new Error('Quote not found')
+
+    const invoiceData = {
+      org_id: quote.org_id,
+      client_id: quote.client_id,
+      job_id: quote.job_id,
+      quote_id: quote.id,
+      number: `INV-${Date.now()}`,
+      status: 'draft',
+      currency: quote.currency,
+      tax_rate_pct: quote.tax_rate_pct,
+      discount_amt: quote.discount_amt,
+      subtotal: quote.subtotal,
+      tax_total: quote.tax_total,
+      total: quote.total,
+      issue_date: new Date().toISOString()
+    }
+
+    await insertData('invoices', invoiceData)
+    const invoice = await this.get(`INV-${Date.now()}`)
     
-    return this.list('pricebook_items', where, 'name ASC')
-  }
-  
-  static async getQuickPicks(orgId: string): Promise<any[]> {
-    return this.list('pricebook_items', { org_id: orgId, is_quick_pick: 1, active: 1 }, 'name ASC')
-  }
-  
-  static async searchPricebook(orgId: string, searchTerm: string): Promise<any[]> {
-    return this.search('pricebook_items', searchTerm, ['name', 'code', 'category'], {
-      where: { org_id: orgId, active: 1 }
-    })
+    // Copy quote items to invoice items
+    for (const item of (quote.quote_items as Record<string, unknown>[])) {
+      await insertData('invoice_items', {
+        ...item,
+        invoice_id: invoice?.id,
+        quote_item_id: item.id
+      })
+    }
+
+    return invoice
   }
 }
 
 /**
- * Offline data utilities
+ * Invoice data layer with payments relationship
  */
-export const offlineDataUtils = {
-  initOfflineData,
-  isNetworkOnline,
-  OfflineDataLayer,
-  ClientDataLayer,
-  QuoteDataLayer,
-  InvoiceDataLayer,
-  PricebookDataLayer
+export class InvoiceDataLayer extends OfflineDataLayer<OfflineRecord & Record<string, unknown>> {
+  constructor() {
+    super('invoices')
+  }
+
+  async getWithPayments(invoiceId: string): Promise<(OfflineRecord & Record<string, unknown>) | null> {
+    const invoice = await this.get(invoiceId)
+    if (!invoice) return null
+
+    const payments = await queryData('payments', ['*'], { invoice_id: invoiceId })
+    return { ...invoice, payments }
+  }
+
+  async recordPayment(invoiceId: string, paymentData: Record<string, unknown>): Promise<Record<string, unknown>> {
+    const invoice = await this.get(invoiceId)
+    if (!invoice) throw new Error('Invoice not found')
+
+    await insertData('payments', {
+      ...paymentData,
+      invoice_id: invoiceId,
+      received_at: new Date().toISOString()
+    })
+
+    const payment = await queryData('payments', ['*'], { invoice_id: invoiceId }, undefined, 1)
+    const paymentRecord = payment[0]
+
+    // Update invoice balance
+    const newBalance = parseFloat(invoice.balance_due as string) - parseFloat(paymentRecord.amount as string)
+    await this.update(invoiceId, { balance_due: newBalance.toString() })
+
+    return paymentRecord
+  }
+
+  async getOverdue(): Promise<(OfflineRecord & Record<string, unknown>)[]> {
+    const today = new Date().toISOString().split('T')[0]
+    return await queryData(
+      'invoices',
+      ['*'],
+      { due_date: today, status: 'sent' },
+      'due_date ASC'
+    )
+  }
 }
+
+/**
+ * Pricebook data layer
+ */
+export class PricebookDataLayer extends OfflineDataLayer<OfflineRecord & Record<string, unknown>> {
+  constructor() {
+    super('pricebook_items')
+  }
+
+  async getActive(orgId: string): Promise<(OfflineRecord & Record<string, unknown>)[]> {
+    return await queryData(
+      this.tableName,
+      ['*'],
+      { org_id: orgId, active: 1 },
+      'name ASC'
+    )
+  }
+
+  async getQuickPicks(orgId: string): Promise<(OfflineRecord & Record<string, unknown>)[]> {
+    return await queryData(
+      this.tableName,
+      ['*'],
+      { org_id: orgId, active: 1, is_quick_pick: 1 },
+      'name ASC'
+    )
+  }
+
+  async searchItems(query: string): Promise<(OfflineRecord & Record<string, unknown>)[]> {
+    return await this.search(query, ['name', 'code', 'category'])
+  }
+}
+
+// Export instances
+export const clientDataLayer = new ClientDataLayer()
+export const quoteDataLayer = new QuoteDataLayer()
+export const invoiceDataLayer = new InvoiceDataLayer()
+export const pricebookDataLayer = new PricebookDataLayer()

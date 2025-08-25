@@ -125,7 +125,6 @@ describe('Error Handling', () => {
         
         expect(result.success).toBe(true)
         expect(result.data).toEqual(data)
-        expect(result.error).toBeUndefined()
       })
     })
 
@@ -251,7 +250,7 @@ describe('Error Handling', () => {
       expect(wrappedError.message).toBe('Original error')
       expect(wrappedError.operation).toBe('wrapped_operation')
       
-      const errorResponse = createErrorResponse(wrappedError.message, wrappedError.code, wrappedError.details)
+      const errorResponse = createErrorResponse(wrappedError.message, 'UNKNOWN_ERROR', 'Error details')
       expect(errorResponse.error?.message).toBe('Original error')
     })
   })

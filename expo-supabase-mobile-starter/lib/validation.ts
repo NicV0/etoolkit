@@ -3,7 +3,7 @@ import { isValidAmount, isValidPercentage } from './calculations'
 
 // Base validation schemas
 export const emailSchema = z.string().email('Invalid email address')
-export const phoneSchema = z.string().regex(/^[\+]?[1-9][\d]{0,15}$/, 'Invalid phone number')
+export const phoneSchema = z.string().regex(/^[+]?[1-9][\d]{0,15}$/, 'Invalid phone number')
 export const postalCodeSchema = z.string().regex(/^\d{5}(-\d{4})?$/, 'Invalid postal code')
 
 // Client validation

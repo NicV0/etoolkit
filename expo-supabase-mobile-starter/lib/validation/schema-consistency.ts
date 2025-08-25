@@ -1,407 +1,396 @@
-import { z } from 'zod'
-import { clientSchema, jobSchema, pricebookItemSchema, quoteSchema, invoiceSchema, paymentSchema, organizationSchema, settingsSchema } from '../validation'
+import { z } from 'zod';
+import { schemas } from './schemas';
 
-// Database constraint definitions (matching schema.sql)
-export const DATABASE_CONSTRAINTS = {
-  // Organizations table
-  organizations: {
-    name: { maxLength: null, required: true },
-    trade: { maxLength: null, required: true },
-    size: { enum: ['solo', 'small', 'medium', 'large'], required: false },
-    plan: { enum: ['free', 'pro', 'enterprise'], required: true, default: 'free' }
-  },
-  
-  // Clients table
-  clients: {
-    name: { maxLength: null, required: true },
-    phone: { maxLength: null, required: false },
-    email: { maxLength: null, required: false },
-    address_line1: { maxLength: null, required: false },
-    address_line2: { maxLength: null, required: false },
-    city: { maxLength: null, required: false },
-    state: { maxLength: null, required: false },
-    postal: { maxLength: null, required: false },
-    country: { maxLength: null, required: false, default: 'US' },
-    notes: { maxLength: null, required: false },
-    status: { enum: ['active', 'inactive', 'prospect'], required: false, default: 'active' }
-  },
-  
-  // Jobs table
-  jobs: {
-    title: { maxLength: null, required: true },
-    description: { maxLength: null, required: false },
-    status: { enum: ['pending', 'in_progress', 'completed', 'cancelled'], required: false, default: 'pending' },
-    due_date: { type: 'date', required: false },
-    location: { maxLength: null, required: false }
-  },
-  
-  // Pricebook items table
-  pricebook_items: {
-    code: { maxLength: null, required: false },
-    name: { maxLength: null, required: true },
-    category: { maxLength: null, required: false },
-    unit: { maxLength: null, required: false, default: 'each' },
-    unit_price: { type: 'decimal', precision: 10, scale: 2, required: true },
-    taxable: { type: 'boolean', required: false, default: true },
-    active: { type: 'boolean', required: false, default: true },
-    is_quick_pick: { type: 'boolean', required: false, default: false }
-  },
-  
-  // Quotes table
-  quotes: {
-    number: { maxLength: null, required: true },
-    client_id: { type: 'uuid', required: true },
-    job_id: { type: 'uuid', required: false },
-    status: { enum: ['draft', 'sent', 'accepted', 'rejected', 'expired'], required: false, default: 'draft' },
-    currency: { maxLength: 3, required: false, default: 'USD' },
-    tax_rate_pct: { type: 'decimal', precision: 5, scale: 2, required: false, default: 0 },
-    discount_amt: { type: 'decimal', precision: 10, scale: 2, required: false, default: 0 },
-    subtotal: { type: 'decimal', precision: 10, scale: 2, required: false, default: 0 },
-    tax_total: { type: 'decimal', precision: 10, scale: 2, required: false, default: 0 },
-    total: { type: 'decimal', precision: 10, scale: 2, required: false, default: 0 },
-    terms: { maxLength: null, required: false },
-    valid_until: { type: 'date', required: false }
-  },
-  
-  // Invoices table
-  invoices: {
-    number: { maxLength: null, required: true },
-    client_id: { type: 'uuid', required: true },
-    job_id: { type: 'uuid', required: false },
-    quote_id: { type: 'uuid', required: false },
-    status: { enum: ['draft', 'sent', 'paid', 'overdue', 'cancelled'], required: false, default: 'draft' },
-    currency: { maxLength: 3, required: false, default: 'USD' },
-    tax_rate_pct: { type: 'decimal', precision: 5, scale: 2, required: false, default: 0 },
-    discount_amt: { type: 'decimal', precision: 10, scale: 2, required: false, default: 0 },
-    subtotal: { type: 'decimal', precision: 10, scale: 2, required: false, default: 0 },
-    tax_total: { type: 'decimal', precision: 10, scale: 2, required: false, default: 0 },
-    total: { type: 'decimal', precision: 10, scale: 2, required: false, default: 0 },
-    balance_due: { type: 'decimal', precision: 10, scale: 2, required: false, default: 0 },
-    issue_date: { type: 'date', required: false, default: 'now()' },
-    due_date: { type: 'date', required: false }
-  },
-  
-  // Payments table
-  payments: {
-    invoice_id: { type: 'uuid', required: true },
-    method: { enum: ['cash', 'check', 'credit_card', 'bank_transfer', 'other'], required: true },
-    amount: { type: 'decimal', precision: 10, scale: 2, required: true },
-    received_at: { type: 'timestamp', required: false, default: 'now()' },
-    note: { maxLength: null, required: false },
-    external_id: { maxLength: null, required: false }
-  },
-  
-  // Settings table
-  settings: {
-    currency: { maxLength: 3, required: false, default: 'USD' },
-    default_tax_pct: { type: 'decimal', precision: 5, scale: 2, required: false, default: 0 },
-    numbering_prefix_quote: { maxLength: 10, required: false, default: 'Q' },
-    numbering_prefix_invoice: { maxLength: 10, required: false, default: 'INV' },
-    logo_url: { maxLength: null, required: false },
-    legal_name: { maxLength: null, required: false },
-    address_json: { type: 'jsonb', required: false },
-    terms_default: { maxLength: null, required: false }
-  }
-} as const
+/**
+ * Schema consistency validation utilities
+ * This module provides tools to validate data consistency across different schemas
+ */
 
-// Validation schema definitions
-export const VALIDATION_SCHEMAS = {
-  client: clientSchema,
-  job: jobSchema,
-  pricebookItem: pricebookItemSchema,
-  quote: quoteSchema,
-  invoice: invoiceSchema,
-  payment: paymentSchema,
-  organization: organizationSchema,
-  settings: settingsSchema
-} as const
-
-export interface SchemaInconsistency {
-  table: string
-  field: string
-  issue: 'missing_field' | 'type_mismatch' | 'constraint_mismatch' | 'enum_mismatch' | 'required_mismatch'
-  validationSchema: string
-  databaseConstraint: string
-  description: string
+export interface SchemaValidationResult {
+  isValid: boolean;
+  errors: string[];
+  warnings: string[];
 }
 
-export class SchemaConsistencyChecker {
-  /**
-   * Check for inconsistencies between validation schemas and database constraints
-   */
-  static checkConsistency(): SchemaInconsistency[] {
-    const inconsistencies: SchemaInconsistency[] = []
-    
-    // Check client schema
-    this.checkClientSchema(inconsistencies)
-    
-    // Check job schema
-    this.checkJobSchema(inconsistencies)
-    
-    // Check pricebook item schema
-    this.checkPricebookItemSchema(inconsistencies)
-    
-    // Check quote schema
-    this.checkQuoteSchema(inconsistencies)
-    
-    // Check invoice schema
-    this.checkInvoiceSchema(inconsistencies)
-    
-    // Check payment schema
-    this.checkPaymentSchema(inconsistencies)
-    
-    // Check organization schema
-    this.checkOrganizationSchema(inconsistencies)
-    
-    // Check settings schema
-    this.checkSettingsSchema(inconsistencies)
-    
-    return inconsistencies
-  }
-  
-  private static checkClientSchema(inconsistencies: SchemaInconsistency[]): void {
-    const schema = clientSchema.shape
-    const constraints = DATABASE_CONSTRAINTS.clients
-    
-    // Check required fields
-    if (!schema.name._def.typeName === 'ZodString') {
-      inconsistencies.push({
-        table: 'clients',
-        field: 'name',
-        issue: 'type_mismatch',
-        validationSchema: 'string',
-        databaseConstraint: 'text',
-        description: 'Name field type mismatch'
-      })
-    }
-    
-    // Check status enum
-    const statusEnum = schema.status._def.values
-    const dbStatusEnum = constraints.status.enum
-    if (statusEnum && dbStatusEnum && !this.arraysEqual(statusEnum, dbStatusEnum)) {
-      inconsistencies.push({
-        table: 'clients',
-        field: 'status',
-        issue: 'enum_mismatch',
-        validationSchema: statusEnum.join(', '),
-        databaseConstraint: dbStatusEnum.join(', '),
-        description: 'Status enum values mismatch'
-      })
-    }
-  }
-  
-  private static checkJobSchema(inconsistencies: SchemaInconsistency[]): void {
-    const schema = jobSchema.shape
-    const constraints = DATABASE_CONSTRAINTS.jobs
-    
-    // Check status enum
-    const statusEnum = schema.status._def.values
-    const dbStatusEnum = constraints.status.enum
-    if (statusEnum && dbStatusEnum && !this.arraysEqual(statusEnum, dbStatusEnum)) {
-      inconsistencies.push({
-        table: 'jobs',
-        field: 'status',
-        issue: 'enum_mismatch',
-        validationSchema: statusEnum.join(', '),
-        databaseConstraint: dbStatusEnum.join(', '),
-        description: 'Job status enum values mismatch'
-      })
-    }
-  }
-  
-  private static checkPricebookItemSchema(inconsistencies: SchemaInconsistency[]): void {
-    const schema = pricebookItemSchema.shape
-    const constraints = DATABASE_CONSTRAINTS.pricebook_items
-    
-    // Check unit_price type (should be decimal in DB, number in validation)
-    if (schema.unit_price._def.typeName !== 'ZodNumber') {
-      inconsistencies.push({
-        table: 'pricebook_items',
-        field: 'unit_price',
-        issue: 'type_mismatch',
-        validationSchema: 'number',
-        databaseConstraint: 'decimal(10,2)',
-        description: 'Unit price should be handled as string in validation for decimal precision'
-      })
-    }
-  }
-  
-  private static checkQuoteSchema(inconsistencies: SchemaInconsistency[]): void {
-    const schema = quoteSchema.shape
-    const constraints = DATABASE_CONSTRAINTS.quotes
-    
-    // Check status enum
-    const statusEnum = ['draft', 'sent', 'accepted', 'rejected', 'expired']
-    const dbStatusEnum = constraints.status.enum
-    if (dbStatusEnum && !this.arraysEqual(statusEnum, dbStatusEnum)) {
-      inconsistencies.push({
-        table: 'quotes',
-        field: 'status',
-        issue: 'enum_mismatch',
-        validationSchema: statusEnum.join(', '),
-        databaseConstraint: dbStatusEnum.join(', '),
-        description: 'Quote status enum values mismatch'
-      })
-    }
-  }
-  
-  private static checkInvoiceSchema(inconsistencies: SchemaInconsistency[]): void {
-    const schema = invoiceSchema.shape
-    const constraints = DATABASE_CONSTRAINTS.invoices
-    
-    // Check status enum
-    const statusEnum = ['draft', 'sent', 'paid', 'overdue', 'cancelled']
-    const dbStatusEnum = constraints.status.enum
-    if (dbStatusEnum && !this.arraysEqual(statusEnum, dbStatusEnum)) {
-      inconsistencies.push({
-        table: 'invoices',
-        field: 'status',
-        issue: 'enum_mismatch',
-        validationSchema: statusEnum.join(', '),
-        databaseConstraint: dbStatusEnum.join(', '),
-        description: 'Invoice status enum values mismatch'
-      })
-    }
-  }
-  
-  private static checkPaymentSchema(inconsistencies: SchemaInconsistency[]): void {
-    const schema = paymentSchema.shape
-    const constraints = DATABASE_CONSTRAINTS.payments
-    
-    // Check method enum
-    const methodEnum = schema.method._def.values
-    const dbMethodEnum = constraints.method.enum
-    if (methodEnum && dbMethodEnum && !this.arraysEqual(methodEnum, dbMethodEnum)) {
-      inconsistencies.push({
-        table: 'payments',
-        field: 'method',
-        issue: 'enum_mismatch',
-        validationSchema: methodEnum.join(', '),
-        databaseConstraint: dbMethodEnum.join(', '),
-        description: 'Payment method enum values mismatch'
-      })
-    }
-  }
-  
-  private static checkOrganizationSchema(inconsistencies: SchemaInconsistency[]): void {
-    const schema = organizationSchema.shape
-    const constraints = DATABASE_CONSTRAINTS.organizations
-    
-    // Check size enum
-    const sizeEnum = schema.size._def.values
-    const dbSizeEnum = constraints.size.enum
-    if (sizeEnum && dbSizeEnum && !this.arraysEqual(sizeEnum, dbSizeEnum)) {
-      inconsistencies.push({
-        table: 'organizations',
-        field: 'size',
-        issue: 'enum_mismatch',
-        validationSchema: sizeEnum.join(', '),
-        databaseConstraint: dbSizeEnum.join(', '),
-        description: 'Organization size enum values mismatch'
-      })
-    }
-    
-    // Check plan enum
-    const planEnum = schema.plan._def.values
-    const dbPlanEnum = constraints.plan.enum
-    if (planEnum && dbPlanEnum && !this.arraysEqual(planEnum, dbPlanEnum)) {
-      inconsistencies.push({
-        table: 'organizations',
-        field: 'plan',
-        issue: 'enum_mismatch',
-        validationSchema: planEnum.join(', '),
-        databaseConstraint: dbPlanEnum.join(', '),
-        description: 'Organization plan enum values mismatch'
-      })
-    }
-  }
-  
-  private static checkSettingsSchema(inconsistencies: SchemaInconsistency[]): void {
-    const schema = settingsSchema.shape
-    const constraints = DATABASE_CONSTRAINTS.settings
-    
-    // Check currency length
-    const currencyMaxLength = schema.currency._def.maxLength
-    const dbCurrencyMaxLength = constraints.currency.maxLength
-    if (currencyMaxLength !== dbCurrencyMaxLength) {
-      inconsistencies.push({
-        table: 'settings',
-        field: 'currency',
-        issue: 'constraint_mismatch',
-        validationSchema: `maxLength: ${currencyMaxLength}`,
-        databaseConstraint: `maxLength: ${dbCurrencyMaxLength}`,
-        description: 'Currency field max length mismatch'
-      })
-    }
-  }
-  
-  private static arraysEqual(a: any[], b: any[]): boolean {
-    if (a.length !== b.length) return false
-    return a.every((val, index) => val === b[index])
-  }
-  
-  /**
-   * Generate a report of schema inconsistencies
-   */
-  static generateReport(): string {
-    const inconsistencies = this.checkConsistency()
-    
-    if (inconsistencies.length === 0) {
-      return '✅ All validation schemas are consistent with database constraints.'
-    }
-    
-    let report = `⚠️  Found ${inconsistencies.length} schema inconsistency(ies):\n\n`
-    
-    inconsistencies.forEach((inconsistency, index) => {
-      report += `${index + 1}. **${inconsistency.table}.${inconsistency.field}**\n`
-      report += `   Issue: ${inconsistency.issue}\n`
-      report += `   Description: ${inconsistency.description}\n`
-      report += `   Validation Schema: ${inconsistency.validationSchema}\n`
-      report += `   Database Constraint: ${inconsistency.databaseConstraint}\n\n`
-    })
-    
-    return report
-  }
-  
-  /**
-   * Validate a specific schema against database constraints
-   */
-  static validateSchema(schemaName: keyof typeof VALIDATION_SCHEMAS): SchemaInconsistency[] {
-    const inconsistencies: SchemaInconsistency[] = []
-    
-    switch (schemaName) {
-      case 'client':
-        this.checkClientSchema(inconsistencies)
-        break
-      case 'job':
-        this.checkJobSchema(inconsistencies)
-        break
-      case 'pricebookItem':
-        this.checkPricebookItemSchema(inconsistencies)
-        break
-      case 'quote':
-        this.checkQuoteSchema(inconsistencies)
-        break
-      case 'invoice':
-        this.checkInvoiceSchema(inconsistencies)
-        break
-      case 'payment':
-        this.checkPaymentSchema(inconsistencies)
-        break
-      case 'organization':
-        this.checkOrganizationSchema(inconsistencies)
-        break
-      case 'settings':
-        this.checkSettingsSchema(inconsistencies)
-        break
-    }
-    
-    return inconsistencies
-  }
+export interface CrossSchemaValidationContext {
+  orgId: string;
+  userId: string;
+  timestamp: string;
 }
 
-// Export utility functions
-export const checkSchemaConsistency = () => SchemaConsistencyChecker.checkConsistency()
-export const generateConsistencyReport = () => SchemaConsistencyChecker.generateReport()
-export const validateSpecificSchema = (schemaName: keyof typeof VALIDATION_SCHEMAS) => 
-  SchemaConsistencyChecker.validateSchema(schemaName)
+/**
+ * Validates that a client can be referenced by other entities
+ */
+export const validateClientReference = (
+  clientId: string,
+  context: CrossSchemaValidationContext
+): SchemaValidationResult => {
+  const errors: string[] = [];
+  const warnings: string[] = [];
+
+  if (!clientId) {
+    errors.push('Client ID is required');
+  }
+
+  if (clientId && !z.string().uuid().safeParse(clientId).success) {
+    errors.push('Client ID must be a valid UUID');
+  }
+
+  return { isValid: errors.length === 0, errors, warnings };
+};
+
+/**
+ * Validates that an invoice can be created from a quote
+ */
+export const validateQuoteToInvoice = (
+  quoteData: unknown,
+  context: CrossSchemaValidationContext
+): SchemaValidationResult => {
+  const errors: string[] = [];
+  const warnings: string[] = [];
+
+  try {
+    const quote = schemas.quote.parse(quoteData);
+    
+    // Validate quote status
+    if (quote.status !== 'accepted') {
+      errors.push('Can only create invoice from accepted quotes');
+    }
+
+    // Validate quote has items
+    if (!quote.items || quote.items.length === 0) {
+      errors.push('Quote must have at least one item');
+    }
+
+    // Validate quote is not expired
+    if (quote.valid_until && new Date(quote.valid_until) < new Date()) {
+      errors.push('Quote has expired');
+    }
+
+    // Validate client reference
+    const clientValidation = validateClientReference(quote.client_id, context);
+    if (!clientValidation.isValid) {
+      errors.push(...clientValidation.errors);
+    }
+
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      errors.push(...error.errors.map(e => `${e.path.join('.')}: ${e.message}`));
+    } else {
+      errors.push('Invalid quote data');
+    }
+  }
+
+  return { isValid: errors.length === 0, errors, warnings };
+};
+
+/**
+ * Validates that a payment can be applied to an invoice
+ */
+export const validatePaymentToInvoice = (
+  paymentData: unknown,
+  invoiceData: unknown,
+  context: CrossSchemaValidationContext
+): SchemaValidationResult => {
+  const errors: string[] = [];
+  const warnings: string[] = [];
+
+  try {
+    const payment = schemas.payment.parse(paymentData);
+    const invoice = schemas.invoice.parse(invoiceData);
+
+    // Validate payment amount
+    if (payment.amount <= 0) {
+      errors.push('Payment amount must be positive');
+    }
+
+    // Validate payment currency matches invoice
+    if (payment.currency !== invoice.currency) {
+      errors.push('Payment currency must match invoice currency');
+    }
+
+    // Validate payment doesn't exceed invoice total
+    if (payment.amount > invoice.total) {
+      warnings.push('Payment amount exceeds invoice total');
+    }
+
+    // Validate invoice status
+    if (invoice.status === 'cancelled') {
+      errors.push('Cannot apply payment to cancelled invoice');
+    }
+
+    // Validate invoice reference
+    if (payment.invoice_id !== invoice.id) {
+      errors.push('Payment invoice ID must match invoice ID');
+    }
+
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      errors.push(...error.errors.map(e => `${e.path.join('.')}: ${e.message}`));
+    } else {
+      errors.push('Invalid payment or invoice data');
+    }
+  }
+
+  return { isValid: errors.length === 0, errors, warnings };
+};
+
+/**
+ * Validates that pricebook items are consistent
+ */
+export const validatePricebookConsistency = (
+  items: unknown[],
+  context: CrossSchemaValidationContext
+): SchemaValidationResult => {
+  const errors: string[] = [];
+  const warnings: string[] = [];
+
+  const validatedItems: any[] = [];
+
+  for (let i = 0; i < items.length; i++) {
+    try {
+      const item = schemas.pricebookItem.parse(items[i]);
+      validatedItems.push(item);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        errors.push(`Item ${i + 1}: ${error.errors.map(e => e.message).join(', ')}`);
+      } else {
+        errors.push(`Item ${i + 1}: Invalid data`);
+      }
+    }
+  }
+
+  // Check for duplicate codes
+  const codes = validatedItems.map(item => item.code).filter(Boolean);
+  const duplicateCodes = codes.filter((code, index) => codes.indexOf(code) !== index);
+  if (duplicateCodes.length > 0) {
+    warnings.push(`Duplicate codes found: ${duplicateCodes.join(', ')}`);
+  }
+
+  // Check for duplicate names
+  const names = validatedItems.map(item => item.name);
+  const duplicateNames = names.filter((name, index) => names.indexOf(name) !== index);
+  if (duplicateNames.length > 0) {
+    warnings.push(`Duplicate names found: ${duplicateNames.join(', ')}`);
+  }
+
+  return { isValid: errors.length === 0, errors, warnings };
+};
+
+/**
+ * Validates that job data is consistent
+ */
+export const validateJobConsistency = (
+  jobData: unknown,
+  context: CrossSchemaValidationContext
+): SchemaValidationResult => {
+  const errors: string[] = [];
+  const warnings: string[] = [];
+
+  try {
+    const job = schemas.job.parse(jobData);
+
+    // Validate client reference
+    const clientValidation = validateClientReference(job.client_id, context);
+    if (!clientValidation.isValid) {
+      errors.push(...clientValidation.errors);
+    }
+
+    // Validate date consistency
+    if (job.start_date && job.end_date) {
+      const startDate = new Date(job.start_date);
+      const endDate = new Date(job.end_date);
+      
+      if (startDate > endDate) {
+        errors.push('Start date cannot be after end date');
+      }
+    }
+
+    // Validate hours consistency
+    if (job.estimated_hours && job.actual_hours) {
+      if (job.actual_hours > job.estimated_hours * 2) {
+        warnings.push('Actual hours significantly exceed estimated hours');
+      }
+    }
+
+    // Validate cost consistency
+    if (job.estimated_cost && job.actual_cost) {
+      if (job.actual_cost > job.estimated_cost * 1.5) {
+        warnings.push('Actual cost significantly exceeds estimated cost');
+      }
+    }
+
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      errors.push(...error.errors.map(e => `${e.path.join('.')}: ${e.message}`));
+    } else {
+      errors.push('Invalid job data');
+    }
+  }
+
+  return { isValid: errors.length === 0, errors, warnings };
+};
+
+/**
+ * Validates organization settings consistency
+ */
+export const validateOrganizationSettings = (
+  orgData: unknown,
+  context: CrossSchemaValidationContext
+): SchemaValidationResult => {
+  const errors: string[] = [];
+  const warnings: string[] = [];
+
+  try {
+    const org = schemas.organization.parse(orgData);
+
+    if (org.settings) {
+      // Validate tax rate
+      if (org.settings.default_tax_rate > 100) {
+        errors.push('Default tax rate cannot exceed 100%');
+      }
+
+      // Validate payment terms
+      if (org.settings.payment_terms_days > 365) {
+        warnings.push('Payment terms exceed one year');
+      }
+
+      // Validate prefixes
+      if (org.settings.quote_prefix && org.settings.quote_prefix.length > 10) {
+        warnings.push('Quote prefix is quite long');
+      }
+
+      if (org.settings.invoice_prefix && org.settings.invoice_prefix.length > 10) {
+        warnings.push('Invoice prefix is quite long');
+      }
+
+      // Validate numbering
+      if (org.settings.next_quote_number < 1) {
+        errors.push('Next quote number must be at least 1');
+      }
+
+      if (org.settings.next_invoice_number < 1) {
+        errors.push('Next invoice number must be at least 1');
+      }
+    }
+
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      errors.push(...error.errors.map(e => `${e.path.join('.')}: ${e.message}`));
+    } else {
+      errors.push('Invalid organization data');
+    }
+  }
+
+  return { isValid: errors.length === 0, errors, warnings };
+};
+
+/**
+ * Comprehensive validation for all schemas
+ */
+export const validateAllSchemas = (
+  data: Record<string, unknown>,
+  context: CrossSchemaValidationContext
+): Record<string, SchemaValidationResult> => {
+  const results: Record<string, SchemaValidationResult> = {};
+
+  // Validate clients
+  if (data.clients) {
+    results.clients = validateClientReference(data.clients as string, context);
+  }
+
+  // Validate quotes
+  if (data.quotes) {
+    results.quotes = validateQuoteToInvoice(data.quotes, context);
+  }
+
+  // Validate invoices
+  if (data.invoices) {
+    try {
+      schemas.invoice.parse(data.invoices);
+      results.invoices = { isValid: true, errors: [], warnings: [] };
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        results.invoices = {
+          isValid: false,
+          errors: error.errors.map(e => `${e.path.join('.')}: ${e.message}`),
+          warnings: []
+        };
+      } else {
+        results.invoices = { isValid: false, errors: ['Invalid invoice data'], warnings: [] };
+      }
+    }
+  }
+
+  // Validate payments
+  if (data.payments && data.invoices) {
+    results.payments = validatePaymentToInvoice(data.payments, data.invoices, context);
+  }
+
+  // Validate pricebook items
+  if (data.pricebookItems) {
+    results.pricebookItems = validatePricebookConsistency(data.pricebookItems as unknown[], context);
+  }
+
+  // Validate jobs
+  if (data.jobs) {
+    results.jobs = validateJobConsistency(data.jobs, context);
+  }
+
+  // Validate organization
+  if (data.organization) {
+    results.organization = validateOrganizationSettings(data.organization, context);
+  }
+
+  return results;
+};
+
+/**
+ * Utility to format validation results for display
+ */
+export const formatValidationResults = (results: Record<string, SchemaValidationResult>): string => {
+  const lines: string[] = [];
+
+  for (const [schema, result] of Object.entries(results)) {
+    lines.push(`\n${schema.toUpperCase()}:`);
+    
+    if (result.isValid) {
+      lines.push('  ✅ Valid');
+    } else {
+      lines.push('  ❌ Invalid');
+    }
+
+    if (result.errors.length > 0) {
+      lines.push('  Errors:');
+      result.errors.forEach(error => lines.push(`    - ${error}`));
+    }
+
+    if (result.warnings.length > 0) {
+      lines.push('  Warnings:');
+      result.warnings.forEach(warning => lines.push(`    - ${warning}`));
+    }
+  }
+
+  return lines.join('\n');
+};
+
+/**
+ * Type guard to check if validation result is valid
+ */
+export const isValid = (result: SchemaValidationResult): result is SchemaValidationResult & { isValid: true } => {
+  return result.isValid;
+};
+
+/**
+ * Type guard to check if validation result has errors
+ */
+export const hasErrors = (result: SchemaValidationResult): boolean => {
+  return result.errors.length > 0;
+};
+
+/**
+ * Type guard to check if validation result has warnings
+ */
+export const hasWarnings = (result: SchemaValidationResult): boolean => {
+  return result.warnings.length > 0;
+};

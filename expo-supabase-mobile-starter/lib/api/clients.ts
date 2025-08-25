@@ -1,7 +1,7 @@
 import { supabase } from '../supabase'
 import { clientSchema, ClientFormData } from '../validation'
 import { logActivity } from '../db/mutations'
-import { uploadDocument, deleteDocument } from '../storage'
+// import { uploadDocument, deleteDocument } from '../storage'
 import { parse } from 'papaparse'
 
 export interface ClientFilters {
@@ -118,7 +118,8 @@ export const clientAPI = {
       .from('clients')
       .insert({
         ...validatedData,
-        org_id: orgId
+        org_id: orgId,
+        name: validatedData.name || 'New Client' // Ensure name is always provided
       })
       .select()
       .single()
@@ -132,7 +133,10 @@ export const clientAPI = {
       client_name: client.name
     })
 
-    return client
+    return {
+      ...client,
+      jobs: [] // Initialize with empty jobs array
+    }
   },
 
   // Update existing client
@@ -156,7 +160,10 @@ export const clientAPI = {
       client_name: client.name
     })
 
-    return client
+    return {
+      ...client,
+      jobs: [] // Initialize with empty jobs array
+    }
   },
 
   // Delete client (soft delete by setting status to inactive)
@@ -241,22 +248,22 @@ export const clientAPI = {
     let successCount = 0
 
     for (let i = 0; i < results.data.length; i++) {
-      const row = results.data[i] as any
+      const row = results.data[i] as Record<string, unknown>
       const rowNumber = i + 2 // +2 because of 0-based index and header row
 
       try {
         // Map CSV columns to our schema
         const clientData: ClientFormData = {
-          name: row.name || row.client_name || '',
-          email: row.email || '',
-          phone: row.phone || row.phone_number || '',
-          address_line1: row.address || row.address_line1 || '',
-          city: row.city || '',
-          state: row.state || '',
-          postal: row.postal || row.postal_code || row.zip || '',
-          notes: row.notes || row.comments || '',
-          status: (row.status as any) || 'active',
-          country: row.country || 'US'
+          name: String(row.name || row.client_name || ''),
+          email: String(row.email || ''),
+          phone: String(row.phone || row.phone_number || ''),
+          address_line1: String(row.address || row.address_line1 || ''),
+          city: String(row.city || ''),
+          state: String(row.state || ''),
+          postal: String(row.postal || row.postal_code || row.zip || ''),
+          notes: String(row.notes || row.comments || ''),
+          status: (String(row.status || 'active') as 'active' | 'inactive' | 'prospect'),
+          country: String(row.country || 'US')
         }
 
         // Validate the data
@@ -267,7 +274,8 @@ export const clientAPI = {
           .from('clients')
           .insert({
             ...validatedData,
-            org_id: orgId
+            org_id: orgId,
+            name: validatedData.name || 'New Client' // Ensure name is always provided
           })
 
         successCount++

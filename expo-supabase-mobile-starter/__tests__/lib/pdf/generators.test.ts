@@ -5,16 +5,24 @@ import { modernProTemplate } from '../../../lib/pdf/templates/modern-pro'
 import { ledgerProTemplate } from '../../../lib/pdf/templates/ledger-pro'
 
 // Mock expo-print and expo-sharing
+const mockPrintToFileAsync = jest.fn() as any
+const mockShareAsync = jest.fn() as any
+const mockUploadDocument = jest.fn() as any
+
+mockPrintToFileAsync.mockResolvedValue({ uri: 'file://test.pdf' })
+mockShareAsync.mockResolvedValue(undefined)
+mockUploadDocument.mockResolvedValue('test/path/document.pdf')
+
 jest.mock('expo-print', () => ({
-  printToFileAsync: jest.fn().mockResolvedValue({ uri: 'file://test.pdf' })
+  printToFileAsync: mockPrintToFileAsync
 }))
 
 jest.mock('expo-sharing', () => ({
-  shareAsync: jest.fn().mockResolvedValue(undefined)
+  shareAsync: mockShareAsync
 }))
 
 jest.mock('../../../lib/storage', () => ({
-  uploadDocument: jest.fn().mockResolvedValue('test/path/document.pdf')
+  uploadDocument: mockUploadDocument
 }))
 
 describe('PDF Generation System', () => {
@@ -218,12 +226,13 @@ describe('PDF Generation System', () => {
   describe('Error Handling', () => {
     it('should handle PDF generation errors gracefully', async () => {
       // Mock expo-print to throw an error
-      const { printToFileAsync } = require('expo-print')
-      printToFileAsync.mockRejectedValueOnce(new Error('PDF generation failed'))
+      mockPrintToFileAsync.mockRejectedValueOnce(new Error('PDF generation failed'))
 
       const mockData = {
         org_name: 'Test Company',
         org_address: '123 Test St',
+        org_phone: '555-0123',
+        org_email: 'test@company.com',
         document_type: 'quote' as const,
         number: 'Q-001',
         date: '2024-01-15',
@@ -259,6 +268,8 @@ describe('PDF Generation System', () => {
       const largeData = {
         org_name: 'Test Company',
         org_address: '123 Test St',
+        org_phone: '555-0123',
+        org_email: 'test@company.com',
         document_type: 'quote' as const,
         number: 'Q-001',
         date: '2024-01-15',

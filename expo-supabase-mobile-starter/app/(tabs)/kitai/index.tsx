@@ -1,282 +1,407 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, FlatList, TextInput, Pressable, KeyboardAvoidingView, Platform, Alert } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { useTheme } from '../../../theme/ThemeProvider';
-import { Card } from '../../../components/ui/Card';
-import { Button } from '../../../components/ui/Button';
-import { LoadingSpinner } from '../../../components/ui/LoadingSpinner';
-import { Send, Sparkles, User, Bot, Search, FileText, Users, DollarSign } from 'lucide-react-native';
-import { kitAI } from '../../../lib/kitai';
-import { useSession } from '../../../state/useSession';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
+import {
+  View,
+  ScrollView,
+  StyleSheet,
+  Text,
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+  TextInput,
+} from 'react-native';
+import { Send } from 'lucide-react-native';
 
-interface ChatMessage {
-  id: string;
-  text: string;
-  sender: 'user' | 'ai';
-  timestamp: Date;
-  suggestions?: string[];
+// UI components (kept generic to match your design system)
+import { Card, Button, LoadingSpinner } from '../../../components/ui';
+
+// Hooks (assumed exist; adjust paths/names if yours differ)
+import {
+  useKitAIMessages,
+  useCreateKitAIMessage,
+  useKitAIThreads,
+} from '../../../lib/query/hooks';
+
+// Theme & typography
+import { theme } from '../../../lib/theme/tokens';
+import { textStyles } from '../../../lib/theme/utils';
+
+// Types (optional)
+import type { KitAIMessage } from '../../../lib/database/types';
+
+const QUICK_CHIPS = [
+  { id: 'client_summary', label: 'Client summary', template: 'Show me a summary of ACME Corp.' },
+  { id: 'draft_quote', label: 'Draft quote', template: 'Draft a quote for ACME Corp for 3 hours labor at $120/hr.' },
+  { id: 'balance_due', label: 'Balance due', template: 'What is the balance due for ACME Corp?' },
+];
+
+function normalizeMessages(messagesData: unknown): KitAIMessage[] {
+  // Supports either PaginatedResult<T> or raw T[]
+  if (!messagesData) return [];
+  if (Array.isArray(messagesData)) return messagesData as KitAIMessage[];
+  if (typeof messagesData === 'object' && messagesData !== null && 'data' in messagesData) {
+    const data = (messagesData as { data: unknown }).data;
+    if (Array.isArray(data)) {
+      return data as KitAIMessage[];
+    }
+  }
+  return [];
+}
+
+// Simple chat bubble
+function MessageBubble({ msg }: { msg: KitAIMessage }) {
+  const isUser = msg.role === 'user';
+  return (
+    <View
+      style={[
+        styles.messageContainer,
+        isUser ? styles.userMessageContainer : styles.aiMessageContainer,
+      ]}
+      accessible
+      accessibilityRole="text"
+      accessibilityLabel={`${isUser ? 'You' : 'KitAI'}: ${msg.content}`}
+    >
+      <View
+        style={[
+          styles.messageBubble,
+          isUser ? styles.userBubble : styles.aiBubble,
+        ]}
+      >
+        <Text
+          style={[
+            textStyles.body,
+            isUser ? styles.userText : styles.aiText,
+          ]}
+        >
+          {msg.content}
+        </Text>
+      </View>
+      {!!msg.created_at && (
+        <Text style={[textStyles.caption, styles.timestamp]}>
+          {new Date(msg.created_at).toLocaleTimeString()}
+        </Text>
+      )}
+    </View>
+  );
+}
+
+function WelcomeMessage() {
+  return (
+    <Card variant="outlined" style={styles.welcomeContainer}>
+      <Text style={[textStyles.h3, styles.welcomeTitle]}>Welcome to KitAI</Text>
+      <Text style={[textStyles.body, styles.welcomeBody]}>
+        Ask about clients, draft quotes, or create invoices. Try a quick action below.
+      </Text>
+    </Card>
+  );
 }
 
 export default function KitAIScreen() {
-  const { isDark } = useTheme();
-  const { organization } = useSession();
-  const [messages, setMessages] = useState<ChatMessage[]>([
-    {
-      id: '1',
-      text: 'Hello! I\'m KitAI, your business assistant. I can help you search for clients, find pricebook items, create quotes, and more. What would you like to do?',
-      sender: 'ai',
-      timestamp: new Date(),
-      suggestions: [
-        'Search for a client',
-        'Find pricebook items',
-        'Create a new quote',
-        'View recent invoices'
-      ]
-    },
-  ]);
+  // State
   const [input, setInput] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [isTyping, setIsTyping] = useState(false);
+  const scrollViewRef = useRef<ScrollView>(null);
 
+  // Data
+  const { data: rawMessages, isLoading, isError, error, refetch } = useKitAIMessages('org-id', 'default');
+  const createMessage = useCreateKitAIMessage();
+  const { data: threadsData } = useKitAIThreads('org-id');
+
+  // Get the first thread or use default
+  const threadId = threadsData?.[0]?.id ?? 'default';
+  const messages = normalizeMessages(rawMessages);
+  const hasMessages = messages.length > 0;
+
+  // Auto-scroll on new content or typing state changes
   useEffect(() => {
-    // Initialize KitAI when component mounts
-    kitAI.initialize().catch(error => {
-      console.error('Failed to initialize KitAI:', error);
-    });
-  }, []);
+    const t = setTimeout(() => {
+      scrollViewRef.current?.scrollToEnd({ animated: true });
+    }, 50);
+    return () => clearTimeout(t);
+  }, [messages.length, isTyping]);
 
-  const getBackgroundColor = () => {
-    return isDark ? 'bg-gray-900' : 'bg-gray-50';
-  };
+  const handleSend = useCallback(async () => {
+    const trimmed = input.trim();
+    if (!trimmed || isTyping) return;
 
-  const getTextColor = () => {
-    return isDark ? 'text-white' : 'text-gray-900';
-  };
-
-  const getSubtextColor = () => {
-    return isDark ? 'text-gray-400' : 'text-gray-600';
-  };
-
-  const sendMessage = async (text: string) => {
-    if (!text.trim() || !organization) return;
-
-    const userMessage: ChatMessage = {
-      id: Date.now().toString(),
-      text: text.trim(),
-      sender: 'user',
-      timestamp: new Date(),
-    };
-
-    setMessages(prev => [...prev, userMessage]);
     setInput('');
-    setLoading(true);
+    setIsTyping(true);
 
     try {
-      // Process query with KitAI
-      const response = await kitAI.processQuery(text, organization.id);
-      
-      let aiResponse = '';
-      let suggestions: string[] = [];
+      // 1) Save user message
+      await createMessage.mutateAsync({
+        threadId: threadId, // Use camelCase to match API interface
+        // role: 'user', // Role is handled internally
+        content: trimmed,
+      });
 
-      if (Array.isArray(response) && response.length > 0) {
-        // Search results
-        aiResponse = `I found ${response.length} result(s):\n\n`;
-        response.slice(0, 5).forEach((item, index) => {
-          aiResponse += `${index + 1}. ${item.title}\n${item.description}\n\n`;
+      // 2) Simulate AI response (replace with real service call)
+      setTimeout(async () => {
+        const aiContent = `You said: "${trimmed}". How can I help next?`;
+        await createMessage.mutateAsync({
+          threadId: threadId,
+          // role: 'assistant', // Role is handled internally
+          content: aiContent,
         });
-        
-        if (response.length > 5) {
-          aiResponse += `... and ${response.length - 5} more results.`;
-        }
-        
-        suggestions = ['Show more results', 'Refine search', 'Create new item'];
-      } else {
-        // No results or other response
-        aiResponse = `I couldn't find any results for "${text}". Try searching for something else or ask me to help you create a new item.`;
-        suggestions = ['Search for clients', 'Browse pricebook', 'Create new quote'];
-      }
-
-      const aiMessage: ChatMessage = {
-        id: (Date.now() + 1).toString(),
-        text: aiResponse,
-        sender: 'ai',
-        timestamp: new Date(),
-        suggestions,
-      };
-
-      setMessages(prev => [...prev, aiMessage]);
-    } catch (error) {
-      console.error('KitAI query failed:', error);
-      
-      const errorMessage: ChatMessage = {
-        id: (Date.now() + 1).toString(),
-        text: 'Sorry, I encountered an error while processing your request. Please try again.',
-        sender: 'ai',
-        timestamp: new Date(),
-        suggestions: ['Try again', 'Search for clients', 'Browse pricebook'],
-      };
-
-      setMessages(prev => [...prev, errorMessage]);
-    } finally {
-      setLoading(false);
+        setIsTyping(false);
+      }, 900);
+    } catch (e) {
+      setIsTyping(false);
+      Alert.alert('Error', 'Failed to send message. Please try again.');
     }
-  };
+  }, [input, isTyping, createMessage, threadId]);
 
-  const handleSuggestion = (suggestion: string) => {
-    setInput(suggestion);
-    sendMessage(suggestion);
-  };
+  const handleChip = useCallback((template: string) => {
+    setInput(template);
+  }, []);
 
-  const renderMessage = ({ item }: { item: ChatMessage }) => (
-    <View className={`mb-4 ${item.sender === 'user' ? 'items-end' : 'items-start'}`}>
-      <View className={`flex-row items-start max-w-xs ${item.sender === 'user' ? 'flex-row-reverse' : ''}`}>
-        <View className={`w-8 h-8 rounded-full items-center justify-center mr-2 ${item.sender === 'user' ? 'ml-2 mr-0' : ''}`}>
-          {item.sender === 'user' ? (
-            <User size={16} color={isDark ? '#9ca3af' : '#6b7280'} />
-          ) : (
-            <Bot size={16} color={isDark ? '#fb923c' : '#f97316'} />
-          )}
-        </View>
-        <Card
-          className={`${item.sender === 'user' ? 'bg-primary-500' : ''} ${isDark && item.sender === 'user' ? 'bg-primary-600' : ''}`}
-          padding="sm"
-        >
-          <Text
-            className={`text-sm ${item.sender === 'user' ? 'text-white' : getTextColor()}`}
-          >
-            {item.text}
-          </Text>
-        </Card>
+  // Error state
+  if (isError) {
+    return (
+      <View style={styles.errorContainer}>
+        <Text style={[textStyles.h2, styles.errorTitle]}>Something went wrong</Text>
+        <Text style={[textStyles.body, styles.errorMessage]}>
+          {error?.message || 'Failed to load chat'}
+        </Text>
+        <Button
+          variant="primary"
+          size="lg"
+          onPress={() => refetch()}
+          style={styles.errorButton}
+          title="Try Again"
+        />
       </View>
-      
-      {/* Suggestions */}
-      {item.suggestions && item.suggestions.length > 0 && (
-        <View className="mt-2 flex-row flex-wrap">
-          {item.suggestions.map((suggestion, index) => (
-            <Pressable
-              key={index}
-              onPress={() => handleSuggestion(suggestion)}
-              className="mr-2 mb-2"
-            >
-              <Card className="bg-primary-100 border border-primary-200" padding="sm">
-                <Text className="text-xs text-primary-700">{suggestion}</Text>
-              </Card>
-            </Pressable>
-          ))}
-        </View>
-      )}
-      
-      <Text className={`text-xs mt-1 ${getSubtextColor()}`}>
-        {item.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-      </Text>
-    </View>
-  );
-
-  const renderQuickActions = () => (
-    <View className="p-4 border-b border-gray-200">
-      <Text className={`text-sm font-medium mb-3 ${getTextColor()}`}>Quick Actions</Text>
-      <View className="flex-row flex-wrap gap-2">
-        <Pressable onPress={() => sendMessage('Search for clients')}>
-          <Card className="bg-white border border-gray-200" padding="sm">
-            <View className="flex-row items-center">
-              <Users size={16} color="#f97316" />
-              <Text className="text-xs ml-2 text-gray-700">Clients</Text>
-            </View>
-          </Card>
-        </Pressable>
-        
-        <Pressable onPress={() => sendMessage('Find pricebook items')}>
-          <Card className="bg-white border border-gray-200" padding="sm">
-            <View className="flex-row items-center">
-              <Search size={16} color="#f97316" />
-              <Text className="text-xs ml-2 text-gray-700">Pricebook</Text>
-            </View>
-          </Card>
-        </Pressable>
-        
-        <Pressable onPress={() => sendMessage('Create a new quote')}>
-          <Card className="bg-white border border-gray-200" padding="sm">
-            <View className="flex-row items-center">
-              <FileText size={16} color="#f97316" />
-              <Text className="text-xs ml-2 text-gray-700">Quotes</Text>
-            </View>
-          </Card>
-        </Pressable>
-        
-        <Pressable onPress={() => sendMessage('View recent invoices')}>
-          <Card className="bg-white border border-gray-200" padding="sm">
-            <View className="flex-row items-center">
-              <DollarSign size={16} color="#f97316" />
-              <Text className="text-xs ml-2 text-gray-700">Invoices</Text>
-            </View>
-          </Card>
-        </Pressable>
-      </View>
-    </View>
-  );
+    );
+  }
 
   return (
-    <SafeAreaView className={`flex-1 ${getBackgroundColor()}`}>
-      <KeyboardAvoidingView
-        className="flex-1"
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+    <KeyboardAvoidingView
+      style={styles.container}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 64 : 0}
+    >
+      {/* Header (no Settings here by spec) */}
+      <View style={styles.header}>
+        <View>
+          <Text style={[textStyles.h2, styles.screenTitle]}>KitAI</Text>
+          <Text style={[textStyles.caption, styles.subtitle]}>Your AI Assistant</Text>
+        </View>
+      </View>
+
+      {/* Messages */}
+      <ScrollView
+        ref={scrollViewRef}
+        style={styles.messagesContainer}
+        contentContainerStyle={styles.messagesContent}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
       >
-        {/* Header */}
-        <View className="p-4 border-b border-gray-200">
-          <View className="flex-row items-center">
-            <Sparkles size={24} color="#f97316" />
-            <Text className={`text-xl font-bold ml-2 ${getTextColor()}`}>
-              KitAI
-            </Text>
+        {isLoading ? (
+          <View style={styles.loadingContainer}>
+            <LoadingSpinner size="large" />
+            <Text style={[textStyles.body, styles.loadingText]}>Loading chat...</Text>
           </View>
-          <Text className={`text-sm ${getSubtextColor()}`}>
-            Your intelligent business assistant
-          </Text>
-        </View>
-
-        {/* Quick Actions */}
-        {renderQuickActions()}
-
-        {/* Messages */}
-        <FlatList
-          className="flex-1 px-4"
-          data={messages}
-          renderItem={renderMessage}
-          keyExtractor={(item) => item.id}
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={{ paddingVertical: 16 }}
-        />
-
-        {/* Loading Indicator */}
-        {loading && (
-          <View className="p-4 items-center">
-            <LoadingSpinner text="Thinking..." />
-          </View>
+        ) : !hasMessages ? (
+          <WelcomeMessage />
+        ) : (
+          <>
+            {messages.map((m) => (
+              <MessageBubble key={m.id} msg={m} />
+            ))}
+            {isTyping && (
+              <View style={[styles.messageContainer, styles.aiMessageContainer]}>
+                <View style={[styles.messageBubble, styles.aiBubble]}>
+                  <View style={styles.typingRow}>
+                    <LoadingSpinner size="small" />
+                    <Text style={[textStyles.caption, styles.typingText]}>KitAI is typing…</Text>
+                  </View>
+                </View>
+              </View>
+            )}
+          </>
         )}
+      </ScrollView>
 
-        {/* Input */}
-        <View className="p-4 border-t border-gray-200">
-          <View className="flex-row items-center">
-            <TextInput
-              className={`flex-1 border border-gray-300 rounded-lg px-3 py-2 mr-2 ${getTextColor()}`}
-              placeholder="Ask KitAI anything..."
-              placeholderTextColor={isDark ? '#9ca3af' : '#6b7280'}
-              value={input}
-              onChangeText={setInput}
-              multiline
-              maxLength={500}
+      {/* Quick chips */}
+      <View style={styles.chipsRow}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipsContent}>
+          {QUICK_CHIPS.map((c) => (
+            <Button
+              key={c.id}
+              variant="outline"
+              size="sm"
+              onPress={() => handleChip(c.template)}
+              style={styles.chip}
+              title={c.label}
             />
-            <Pressable
-              onPress={() => sendMessage(input)}
-              disabled={!input.trim() || loading}
-              className={`w-10 h-10 rounded-lg items-center justify-center ${
-                input.trim() && !loading ? 'bg-primary-500' : 'bg-gray-300'
-              }`}
-            >
-              <Send size={20} color={input.trim() && !loading ? 'white' : '#9ca3af'} />
-            </Pressable>
-          </View>
-        </View>
-      </KeyboardAvoidingView>
-    </SafeAreaView>
+          ))}
+        </ScrollView>
+      </View>
+
+      {/* Input bar */}
+      <View style={styles.inputBar}>
+        <TextInput
+          style={[styles.input, textStyles.body]}
+          placeholder="Ask KitAI…"
+          placeholderTextColor={theme.colors.text.muted}
+          value={input}
+          onChangeText={setInput}
+          multiline
+          maxLength={2000}
+          editable={!isTyping}
+          numberOfLines={1}
+        />
+        <Button
+          variant="primary"
+          size="md"
+          onPress={handleSend}
+          disabled={!input.trim() || isTyping}
+          style={styles.sendButton}
+          leftIcon={<Send size={18} color="#fff" />}
+          title="Send"
+        />
+      </View>
+    </KeyboardAvoidingView>
   );
 }
+
+/* --------------------------------- Styles -------------------------------- */
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: theme.colors.background,
+  },
+  header: {
+    paddingHorizontal: theme.spacing.lg,
+    paddingVertical: theme.spacing.md,
+    backgroundColor: theme.colors.surface,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.border,
+  },
+  screenTitle: {
+    color: theme.colors.text.primary,
+    marginBottom: theme.spacing.xs,
+  },
+  subtitle: {
+    color: theme.colors.text.secondary,
+  },
+
+  messagesContainer: { flex: 1 },
+  messagesContent: {
+    paddingHorizontal: theme.spacing.lg,
+    paddingTop: theme.spacing.lg,
+    paddingBottom: theme.spacing.md,
+  },
+
+  messageContainer: {
+    marginBottom: theme.spacing.sm,
+    maxWidth: '82%',
+  },
+  userMessageContainer: {
+    alignSelf: 'flex-end',
+  },
+  aiMessageContainer: {
+    alignSelf: 'flex-start',
+  },
+
+  messageBubble: {
+    borderRadius: 16,
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.sm,
+  },
+  userBubble: {
+    backgroundColor: theme.colors.primary, // #2563EB
+  },
+  aiBubble: {
+    backgroundColor: theme.colors.card, // dark card bubble (#111827)
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: theme.colors.border,
+  },
+  userText: {
+    color: '#FFFFFF',
+  },
+  aiText: {
+    color: '#E5E7EB',
+  },
+  timestamp: {
+    marginTop: 4,
+    color: theme.colors.text.secondary,
+    alignSelf: 'flex-end',
+  },
+
+  typingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.xs,
+  },
+  typingText: {
+    color: theme.colors.text.secondary,
+  },
+
+  chipsRow: {
+    borderTopWidth: 1,
+    borderTopColor: theme.colors.border,
+    backgroundColor: theme.colors.surface,
+  },
+  chipsContent: {
+    paddingHorizontal: theme.spacing.lg,
+    paddingVertical: theme.spacing.sm,
+    gap: theme.spacing.sm,
+  },
+  chip: {
+    marginRight: theme.spacing.xs,
+  },
+
+  inputBar: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    gap: theme.spacing.sm,
+    paddingHorizontal: theme.spacing.lg,
+    paddingVertical: theme.spacing.md,
+    backgroundColor: theme.colors.surface,
+    borderTopWidth: 1,
+    borderTopColor: theme.colors.border,
+  },
+  input: {
+    flex: 1,
+    minHeight: 40,
+    maxHeight: 112, // ~4 lines
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    backgroundColor: theme.colors.background,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    borderRadius: 12,
+    color: theme.colors.text.primary,
+  },
+  sendButton: {
+    alignSelf: 'flex-end',
+  },
+
+  // Loading / Error
+  loadingContainer: { alignItems: 'center', padding: theme.spacing.lg },
+  loadingText: { color: theme.colors.text.secondary, marginTop: theme.spacing.sm },
+
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: theme.spacing.xl,
+  },
+  errorTitle: { color: theme.colors.text.primary, marginBottom: theme.spacing.sm, textAlign: 'center' },
+  errorMessage: { color: theme.colors.text.secondary, marginBottom: theme.spacing.xl, textAlign: 'center' },
+  errorButton: { minWidth: 120 },
+  
+  // Welcome message styles
+  welcomeContainer: {
+    marginBottom: theme.spacing.lg,
+  },
+  welcomeTitle: {
+    color: theme.colors.text.primary,
+    marginBottom: theme.spacing.sm,
+  },
+  welcomeBody: {
+    color: theme.colors.text.secondary,
+    lineHeight: 20,
+  },
+});

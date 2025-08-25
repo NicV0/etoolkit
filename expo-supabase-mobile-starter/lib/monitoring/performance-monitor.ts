@@ -7,7 +7,7 @@ export interface PerformanceMetric {
   timestamp: string
   success: boolean
   error?: string
-  metadata?: Record<string, any>
+  metadata?: Record<string, unknown>
 }
 
 export interface PerformanceConfig {
@@ -101,7 +101,7 @@ export class PerformanceMonitor {
   static async measure<T>(
     operation: string,
     fn: () => Promise<T>,
-    metadata?: Record<string, any>
+    metadata?: Record<string, unknown>
   ): Promise<T> {
     const monitor = PerformanceMonitor.getInstance()
     
@@ -173,7 +173,7 @@ export class PerformanceMonitor {
       this.networkMetrics = {
         isConnected: state.isConnected ?? false,
         type: state.type,
-        strength: state.details?.strength,
+        strength: (state.details as Record<string, unknown>)?.strength as number | undefined,
         latency: state.details?.isConnectionExpensive ? 1000 : 100 // Mock latency
       }
     })
@@ -239,7 +239,7 @@ export class PerformanceMonitor {
   /**
    * Calculate performance summary
    */
-  private calculateSummary(metrics: PerformanceMetric[]): Record<string, any> {
+  private calculateSummary(metrics: PerformanceMetric[]): Record<string, unknown> {
     const successfulMetrics = metrics.filter(m => m.success)
     const failedMetrics = metrics.filter(m => !m.success)
 
@@ -284,7 +284,7 @@ export class PerformanceMonitor {
   /**
    * Get performance summary
    */
-  static getSummary(): Record<string, any> {
+  static getSummary(): Record<string, unknown> {
     const monitor = PerformanceMonitor.getInstance()
     return monitor.calculateSummary(monitor.metrics)
   }
@@ -346,7 +346,7 @@ export const PerformanceUtils = {
   measureAPICall: <T>(
     apiName: string,
     fn: () => Promise<T>,
-    additionalMetadata?: Record<string, any>
+    additionalMetadata?: Record<string, unknown>
   ): Promise<T> => {
     return PerformanceMonitor.measure(
       `api_call_${apiName}`,
@@ -365,7 +365,7 @@ export const PerformanceUtils = {
   measureDatabaseOperation: <T>(
     operation: string,
     fn: () => Promise<T>,
-    additionalMetadata?: Record<string, any>
+    additionalMetadata?: Record<string, unknown>
   ): Promise<T> => {
     return PerformanceMonitor.measure(
       `database_${operation}`,
@@ -384,7 +384,7 @@ export const PerformanceUtils = {
   measureFileOperation: <T>(
     operation: string,
     fn: () => Promise<T>,
-    additionalMetadata?: Record<string, any>
+    additionalMetadata?: Record<string, unknown>
   ): Promise<T> => {
     return PerformanceMonitor.measure(
       `file_${operation}`,
@@ -403,7 +403,7 @@ export const PerformanceUtils = {
   measureUIOperation: <T>(
     operation: string,
     fn: () => Promise<T>,
-    additionalMetadata?: Record<string, any>
+    additionalMetadata?: Record<string, unknown>
   ): Promise<T> => {
     return PerformanceMonitor.measure(
       `ui_${operation}`,

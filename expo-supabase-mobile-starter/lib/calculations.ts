@@ -1,409 +1,413 @@
-import Decimal from 'decimal.js-light'
+/**
+ * Calculation utilities for financial operations
+ * Handles tax, discounts, totals, and other business calculations
+ */
 
-// Configure Decimal.js for money calculations
-Decimal.set({
-  precision: 20,
-  rounding: Decimal.ROUND_HALF_UP,
-  toExpNeg: -7,
-  toExpPos: 21
-})
-
-export interface LineItem {
-  id: string
-  description: string
-  quantity: number
-  unit_price: number
-  taxable: boolean
-  line_total: number
-}
-
-export interface Payment {
-  id: string
-  amount: number
-  method: string
-  received_at: string
+export interface CalculationItem {
+  description: string;
+  quantity: number;
+  unit: string;
+  unitPrice: number;
+  discountPct?: number;
+  taxable?: boolean;
 }
 
 export interface CalculationResult {
-  subtotal: number
-  tax_total: number
-  discount_amount: number
-  total: number
-  balance_due: number
+  subtotal: number;
+  discountAmount: number;
+  taxableSubtotal: number;
+  taxAmount: number;
+  total: number;
+  itemCount: number;
+  breakdown: {
+    items: Array<{
+      description: string;
+      quantity: number;
+      unit: string;
+      unitPrice: number;
+      lineTotal: number;
+      discountAmount: number;
+      taxableAmount: number;
+      taxAmount: number;
+    }>;
+    summary: {
+      subtotal: number;
+      discountAmount: number;
+      taxableSubtotal: number;
+      taxAmount: number;
+      total: number;
+    };
+  };
 }
 
-/**
- * Convert string to Decimal for safe math operations
- */
-export const toDecimal = (value: string | number | Decimal): Decimal => {
-  if (value instanceof Decimal) return value
-  if (typeof value === 'string') {
-    // Handle empty strings
-    if (value.trim() === '') return new Decimal(0)
-    return new Decimal(value)
-  }
-  return new Decimal(value)
+export interface TaxConfig {
+  rate: number; // Percentage as decimal (e.g., 0.08 for 8%)
+  applyToShipping?: boolean;
+  applyToDiscounts?: boolean;
 }
 
-/**
- * Convert Decimal back to string for database storage
- */
-export const toString = (value: Decimal): string => {
-  return value.toString()
+export interface DiscountConfig {
+  type: 'percentage' | 'fixed';
+  value: number;
+  applyToTax?: boolean;
 }
 
 /**
  * Calculate line total for a single item
  */
-export const calculateLineTotal = (quantity: number, unitPrice: number): number => {
-  const qty = toDecimal(quantity)
-  const price = toDecimal(unitPrice)
-  const total = qty.mul(price)
-  return total.toNumber()
-}
-
-/**
- * Calculate subtotal from line items
- */
-export const calculateSubtotal = (items: LineItem[]): number => {
-  const subtotal = items.reduce((sum, item) => {
-    const lineTotal = toDecimal(item.line_total)
-    return sum.plus(lineTotal)
-  }, new Decimal(0))
+export const calculateLineTotal = (item: CalculationItem): number => {
+  const { quantity, unitPrice, discountPct = 0 } = item;
   
-  return subtotal.toNumber()
-}
+  if (quantity <= 0 || unitPrice < 0) {
+    throw new Error('Quantity must be positive and unit price must be non-negative');
+  }
+
+  const grossTotal = quantity * unitPrice;
+  const discountAmount = grossTotal * (discountPct / 100);
+  
+  return Math.max(0, grossTotal - discountAmount);
+};
 
 /**
- * Calculate tax amount based on tax rate and taxable items
+ * Calculate tax amount for a single item
  */
-export const calculateTax = (
-  subtotal: number, 
-  taxRate: number, 
-  taxableItems: LineItem[]
+export const calculateItemTax = (
+  item: CalculationItem,
+  taxRate: number
 ): number => {
-  const rate = toDecimal(taxRate).div(100) // Convert percentage to decimal
-  const taxableSubtotal = taxableItems.reduce((sum, item) => {
-    if (item.taxable) {
-      return sum.plus(toDecimal(item.line_total))
-    }
-    return sum
-  }, new Decimal(0))
-  
-  const taxAmount = taxableSubtotal.mul(rate)
-  return taxAmount.toNumber()
-}
+  if (taxRate < 0 || taxRate > 1) {
+    throw new Error('Tax rate must be between 0 and 1');
+  }
+
+  if (!item.taxable) {
+    return 0;
+  }
+
+  const lineTotal = calculateLineTotal(item);
+  return lineTotal * taxRate;
+};
 
 /**
- * Calculate total with tax and discount
+ * Calculate comprehensive totals for a list of items
  */
-export const calculateTotal = (
-  subtotal: number, 
-  taxTotal: number, 
-  discount: number
-): number => {
-  const sub = toDecimal(subtotal)
-  const tax = toDecimal(taxTotal)
-  const disc = toDecimal(discount)
-  
-  const total = sub.plus(tax).minus(disc)
-  return total.toNumber()
-}
-
-/**
- * Calculate balance due from total and payments
- */
-export const calculateBalanceDue = (total: number, payments: Payment[]): number => {
-  const totalAmount = toDecimal(total)
-  const paymentsTotal = payments.reduce((sum, payment) => {
-    return sum.plus(toDecimal(payment.amount))
-  }, new Decimal(0))
-  
-  const balance = totalAmount.minus(paymentsTotal)
-  return balance.toNumber()
-}
-
-/**
- * Calculate percentage discount
- */
-export const calculatePercentageDiscount = (subtotal: number, discountPercent: number): number => {
-  const sub = toDecimal(subtotal)
-  const percent = toDecimal(discountPercent).div(100)
-  const discount = sub.mul(percent)
-  return discount.toNumber()
-}
-
-/**
- * Calculate discount amount from percentage
- */
-export const calculateDiscountFromPercentage = (
-  subtotal: number, 
-  taxTotal: number, 
-  discountPercent: number
-): number => {
-  const sub = toDecimal(subtotal)
-  const tax = toDecimal(taxTotal)
-  const percent = toDecimal(discountPercent).div(100)
-  
-  // Apply discount to subtotal + tax
-  const totalBeforeDiscount = sub.plus(tax)
-  const discount = totalBeforeDiscount.mul(percent)
-  return discount.toNumber()
-}
-
-/**
- * Calculate tax rate from tax amount and taxable subtotal
- */
-export const calculateTaxRate = (taxAmount: number, taxableSubtotal: number): number => {
-  if (taxableSubtotal === 0) return 0
-  
-  const tax = toDecimal(taxAmount)
-  const subtotal = toDecimal(taxableSubtotal)
-  const rate = tax.div(subtotal).mul(100)
-  return rate.toNumber()
-}
-
-/**
- * Calculate all totals for a quote or invoice
- */
-export const calculateAllTotals = (
-  items: LineItem[],
-  taxRate: number,
-  discountAmount: number,
-  payments: Payment[] = []
+export const calculateTotals = (
+  items: CalculationItem[],
+  taxRate: number = 0,
+  discountConfig?: DiscountConfig
 ): CalculationResult => {
-  // Calculate subtotal
-  const subtotal = calculateSubtotal(items)
-  
-  // Get taxable items
-  const taxableItems = items.filter(item => item.taxable)
-  
+  if (taxRate < 0 || taxRate > 1) {
+    throw new Error('Tax rate must be between 0 and 1');
+  }
+
+  if (discountConfig && discountConfig.value < 0) {
+    throw new Error('Discount value must be non-negative');
+  }
+
+  // Calculate line totals and tax for each item
+  const calculatedItems = items.map(item => {
+    const lineTotal = calculateLineTotal(item);
+    const itemDiscountAmount = lineTotal * ((item.discountPct || 0) / 100);
+    const taxableAmount = item.taxable ? lineTotal - itemDiscountAmount : 0;
+    const itemTaxAmount = calculateItemTax(item, taxRate);
+
+    return {
+      description: item.description,
+      quantity: item.quantity,
+      unit: item.unit,
+      unitPrice: item.unitPrice,
+      lineTotal,
+      discountAmount: itemDiscountAmount,
+      taxableAmount,
+      taxAmount: itemTaxAmount,
+    };
+  });
+
+  // Calculate subtotals
+  const subtotal = calculatedItems.reduce((sum, item) => sum + item.lineTotal, 0);
+  const totalDiscountAmount = calculatedItems.reduce((sum, item) => sum + item.discountAmount, 0);
+  const taxableSubtotal = calculatedItems.reduce((sum, item) => sum + item.taxableAmount, 0);
+
+  // Apply global discount if configured
+  let globalDiscountAmount = 0;
+  let finalSubtotal = subtotal - totalDiscountAmount;
+
+  if (discountConfig) {
+    if (discountConfig.type === 'percentage') {
+      globalDiscountAmount = finalSubtotal * (discountConfig.value / 100);
+    } else {
+      globalDiscountAmount = Math.min(discountConfig.value, finalSubtotal);
+    }
+    finalSubtotal -= globalDiscountAmount;
+  }
+
   // Calculate tax
-  const taxTotal = calculateTax(subtotal, taxRate, taxableItems)
+  let taxAmount = calculatedItems.reduce((sum, item) => sum + item.taxAmount, 0);
   
-  // Calculate total
-  const total = calculateTotal(subtotal, taxTotal, discountAmount)
-  
-  // Calculate balance due
-  const balanceDue = calculateBalanceDue(total, payments)
-  
+  // Apply tax to global discount if configured
+  if (discountConfig?.applyToTax && globalDiscountAmount > 0) {
+    const discountTaxAmount = globalDiscountAmount * taxRate;
+    taxAmount = Math.max(0, taxAmount - discountTaxAmount);
+  }
+
+  const total = finalSubtotal + taxAmount;
+
   return {
     subtotal,
-    tax_total: taxTotal,
-    discount_amount: discountAmount,
+    discountAmount: totalDiscountAmount + globalDiscountAmount,
+    taxableSubtotal,
+    taxAmount,
     total,
-    balance_due: balanceDue
+    itemCount: items.length,
+    breakdown: {
+      items: calculatedItems,
+      summary: {
+        subtotal,
+        discountAmount: totalDiscountAmount + globalDiscountAmount,
+        taxableSubtotal,
+        taxAmount,
+        total,
+      },
+    },
+  };
+};
+
+/**
+ * Calculate simple subtotal (no tax or discounts)
+ */
+export const calculateSubtotal = (items: CalculationItem[]): number => {
+  return items.reduce((sum, item) => {
+    return sum + calculateLineTotal(item);
+  }, 0);
+};
+
+/**
+ * Calculate tax amount for a subtotal
+ */
+export const calculateTax = (subtotal: number, taxRate: number): number => {
+  if (taxRate < 0 || taxRate > 1) {
+    throw new Error('Tax rate must be between 0 and 1');
   }
-}
+
+  return subtotal * taxRate;
+};
 
 /**
- * Round to 2 decimal places for currency display
+ * Calculate total with tax
  */
-export const roundToCurrency = (value: number): number => {
-  return toDecimal(value).toDecimalPlaces(2).toNumber()
-}
+export const calculateTotal = (subtotal: number, taxAmount: number): number => {
+  return subtotal + taxAmount;
+};
 
 /**
- * Format currency for display
+ * Calculate discount amount
  */
-export const formatCurrency = (
-  amount: number, 
-  currency: string = 'USD', 
-  locale: string = 'en-US'
-): string => {
-  const rounded = roundToCurrency(amount)
-  return new Intl.NumberFormat(locale, {
-    style: 'currency',
-    currency: currency
-  }).format(rounded)
-}
+export const calculateDiscount = (
+  amount: number,
+  discountType: 'percentage' | 'fixed',
+  discountValue: number
+): number => {
+  if (discountValue < 0) {
+    throw new Error('Discount value must be non-negative');
+  }
+
+  if (discountType === 'percentage') {
+    if (discountValue > 100) {
+      throw new Error('Percentage discount cannot exceed 100%');
+    }
+    return amount * (discountValue / 100);
+  } else {
+    return Math.min(discountValue, amount);
+  }
+};
 
 /**
- * Parse currency string to number
+ * Calculate percentage change between two values
  */
-export const parseCurrency = (currencyString: string): number => {
-  // Remove currency symbols and commas
-  const cleaned = currencyString.replace(/[^\d.-]/g, '')
-  return toDecimal(cleaned).toNumber()
-}
+export const calculatePercentageChange = (oldValue: number, newValue: number): number => {
+  if (oldValue === 0) {
+    return newValue > 0 ? 100 : 0;
+  }
+
+  return ((newValue - oldValue) / oldValue) * 100;
+};
 
 /**
  * Calculate profit margin
  */
 export const calculateProfitMargin = (revenue: number, cost: number): number => {
-  if (revenue === 0) return 0
-  
-  const rev = toDecimal(revenue)
-  const cst = toDecimal(cost)
-  const profit = rev.minus(cst)
-  const margin = profit.div(rev).mul(100)
-  return margin.toNumber()
-}
+  if (revenue <= 0) {
+    return 0;
+  }
+
+  return ((revenue - cost) / revenue) * 100;
+};
 
 /**
  * Calculate markup percentage
  */
-export const calculateMarkup = (sellingPrice: number, costPrice: number): number => {
-  if (costPrice === 0) return 0
-  
-  const selling = toDecimal(sellingPrice)
-  const cost = toDecimal(costPrice)
-  const markup = selling.minus(cost)
-  const markupPercent = markup.div(cost).mul(100)
-  return markupPercent.toNumber()
-}
+export const calculateMarkup = (cost: number, sellingPrice: number): number => {
+  if (cost <= 0) {
+    return 0;
+  }
+
+  return ((sellingPrice - cost) / cost) * 100;
+};
 
 /**
- * Calculate compound interest
+ * Round to specified decimal places (default 2 for currency)
  */
-export const calculateCompoundInterest = (
-  principal: number,
-  rate: number,
-  time: number,
-  compoundFrequency: number = 1
-): number => {
-  const p = toDecimal(principal)
-  const r = toDecimal(rate).div(100)
-  const t = toDecimal(time)
-  const n = toDecimal(compoundFrequency)
-  
-  const amount = p.mul(
-    toDecimal(1).plus(r.div(n)).pow(n.mul(t))
-  )
-  
-  return amount.toNumber()
-}
+export const roundToDecimals = (value: number, decimals: number = 2): number => {
+  const factor = Math.pow(10, decimals);
+  return Math.round(value * factor) / factor;
+};
 
 /**
- * Calculate simple interest
+ * Format currency value
  */
-export const calculateSimpleInterest = (
-  principal: number,
-  rate: number,
-  time: number
-): number => {
-  const p = toDecimal(principal)
-  const r = toDecimal(rate).div(100)
-  const t = toDecimal(time)
-  
-  const interest = p.mul(r).mul(t)
-  return interest.toNumber()
-}
+export const formatCurrency = (
+  amount: number,
+  currency: string = 'USD',
+  locale: string = 'en-US'
+): string => {
+  return new Intl.NumberFormat(locale, {
+    style: 'currency',
+    currency,
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(amount);
+};
 
 /**
- * Calculate payment amount for loan
+ * Parse currency string to number
  */
-export const calculateLoanPayment = (
-  principal: number,
-  rate: number,
-  term: number
-): number => {
-  const p = toDecimal(principal)
-  const r = toDecimal(rate).div(100).div(12) // Monthly rate
-  const n = toDecimal(term * 12) // Total payments
+export const parseCurrency = (currencyString: string): number => {
+  // Remove currency symbols and commas, then parse
+  const cleaned = currencyString.replace(/[^\d.-]/g, '');
+  const parsed = parseFloat(cleaned);
   
-  if (r.equals(0)) {
-    return p.div(n).toNumber()
+  if (isNaN(parsed)) {
+    throw new Error('Invalid currency format');
   }
   
-  const payment = p.mul(r).mul(toDecimal(1).plus(r).pow(n))
-    .div(toDecimal(1).plus(r).pow(n).minus(1))
-  
-  return payment.toNumber()
-}
+  return parsed;
+};
 
 /**
- * Validate monetary amount
+ * Calculate payment terms due date
  */
+export const calculateDueDate = (
+  invoiceDate: Date,
+  paymentTermsDays: number
+): Date => {
+  const dueDate = new Date(invoiceDate);
+  dueDate.setDate(dueDate.getDate() + paymentTermsDays);
+  return dueDate;
+};
+
+/**
+ * Check if invoice is overdue
+ */
+export const isOverdue = (dueDate: Date, currentDate: Date = new Date()): boolean => {
+  return currentDate > dueDate;
+};
+
+/**
+ * Calculate days overdue
+ */
+export const calculateDaysOverdue = (dueDate: Date, currentDate: Date = new Date()): number => {
+  if (!isOverdue(dueDate, currentDate)) {
+    return 0;
+  }
+
+  const timeDiff = currentDate.getTime() - dueDate.getTime();
+  return Math.ceil(timeDiff / (1000 * 3600 * 24));
+};
+
+/**
+ * Calculate late fee amount
+ */
+export const calculateLateFee = (
+  invoiceAmount: number,
+  lateFeeRate: number,
+  daysOverdue: number
+): number => {
+  if (daysOverdue <= 0 || lateFeeRate <= 0) {
+    return 0;
+  }
+
+  return invoiceAmount * (lateFeeRate / 100) * (daysOverdue / 30); // Monthly rate
+};
+
+/**
+ * Validate calculation inputs
+ */
+export const validateCalculationInputs = (items: CalculationItem[]): string[] => {
+  const errors: string[] = [];
+
+  if (!Array.isArray(items) || items.length === 0) {
+    errors.push('At least one item is required');
+    return errors;
+  }
+
+  items.forEach((item, index) => {
+    if (!item.description || item.description.trim() === '') {
+      errors.push(`Item ${index + 1}: Description is required`);
+    }
+
+    if (item.quantity <= 0) {
+      errors.push(`Item ${index + 1}: Quantity must be positive`);
+    }
+
+    if (item.unitPrice < 0) {
+      errors.push(`Item ${index + 1}: Unit price must be non-negative`);
+    }
+
+    if (item.discountPct && (item.discountPct < 0 || item.discountPct > 100)) {
+      errors.push(`Item ${index + 1}: Discount percentage must be between 0 and 100`);
+    }
+
+    if (!item.unit || item.unit.trim() === '') {
+      errors.push(`Item ${index + 1}: Unit is required`);
+    }
+  });
+
+  return errors;
+};
+
+/**
+ * Calculate running totals for real-time updates
+ */
+export const calculateRunningTotals = (
+  items: CalculationItem[],
+  taxRate: number = 0
+): {
+  subtotal: number;
+  taxAmount: number;
+  total: number;
+  itemCount: number;
+} => {
+  const subtotal = calculateSubtotal(items);
+  const taxAmount = calculateTax(subtotal, taxRate);
+  const total = calculateTotal(subtotal, taxAmount);
+
+  return {
+    subtotal: roundToDecimals(subtotal),
+    taxAmount: roundToDecimals(taxAmount),
+    total: roundToDecimals(total),
+    itemCount: items.length,
+  };
+};
+
+// Add missing exports that other modules are trying to import
 export const isValidAmount = (amount: number): boolean => {
-  try {
-    const dec = toDecimal(amount)
-    return dec.gte(0)
-  } catch {
-    return false
-  }
-}
+  return typeof amount === 'number' && !isNaN(amount) && isFinite(amount) && amount >= 0;
+};
 
-/**
- * Validate percentage
- */
 export const isValidPercentage = (percentage: number): boolean => {
-  try {
-    const dec = toDecimal(percentage)
-    return dec.gte(0) && dec.lte(100)
-  } catch {
-    return false
-  }
-}
+  return typeof percentage === 'number' && !isNaN(percentage) && isFinite(percentage) && percentage >= 0 && percentage <= 100;
+};
 
-/**
- * Compare two amounts with tolerance for floating point errors
- */
-export const amountsEqual = (a: number, b: number, tolerance: number = 0.01): boolean => {
-  const diff = toDecimal(a).minus(toDecimal(b)).abs()
-  return diff.lte(toDecimal(tolerance))
-}
-
-/**
- * Calculate weighted average
- */
-export const calculateWeightedAverage = (values: number[], weights: number[]): number => {
-  if (values.length !== weights.length || values.length === 0) {
-    throw new Error('Values and weights arrays must have the same length and be non-empty')
-  }
-  
-  const totalWeight = weights.reduce((sum, weight) => sum.plus(toDecimal(weight)), new Decimal(0))
-  const weightedSum = values.reduce((sum, value, index) => {
-    return sum.plus(toDecimal(value).mul(toDecimal(weights[index])))
-  }, new Decimal(0))
-  
-  return weightedSum.div(totalWeight).toNumber()
-}
-
-/**
- * Calculate tax inclusive price
- */
-export const calculateTaxInclusivePrice = (price: number, taxRate: number): number => {
-  const p = toDecimal(price)
-  const rate = toDecimal(taxRate).div(100)
-  const taxInclusive = p.mul(toDecimal(1).plus(rate))
-  return taxInclusive.toNumber()
-}
-
-/**
- * Calculate tax exclusive price
- */
-export const calculateTaxExclusivePrice = (taxInclusivePrice: number, taxRate: number): number => {
-  const price = toDecimal(taxInclusivePrice)
-  const rate = toDecimal(taxRate).div(100)
-  const taxExclusive = price.div(toDecimal(1).plus(rate))
-  return taxExclusive.toNumber()
-}
-
-/**
- * Calculate break-even point
- */
-export const calculateBreakEvenPoint = (fixedCosts: number, unitPrice: number, unitCost: number): number => {
-  if (unitPrice <= unitCost) {
-    throw new Error('Unit price must be greater than unit cost')
-  }
-  
-  const fixed = toDecimal(fixedCosts)
-  const price = toDecimal(unitPrice)
-  const cost = toDecimal(unitCost)
-  const contribution = price.minus(cost)
-  
-  return fixed.div(contribution).toNumber()
-}
-
-/**
- * Calculate return on investment (ROI)
- */
-export const calculateROI = (gain: number, cost: number): number => {
-  if (cost === 0) return 0
-  
-  const g = toDecimal(gain)
-  const c = toDecimal(cost)
-  const roi = g.minus(c).div(c).mul(100)
-  return roi.toNumber()
-}
+export const calculateBalanceDue = (total: number, payments: number[]): number => {
+  const totalPayments = payments.reduce((sum, payment) => sum + payment, 0);
+  return Math.max(0, total - totalPayments);
+};

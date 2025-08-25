@@ -1,4 +1,4 @@
-import { parse, ParseResult } from 'papaparse'
+import { parse } from 'papaparse'
 import { clientAPI } from '../api/clients'
 import { clientImportSchema, csvColumnMappers, CSVImportConfig } from '../validation/clientSchemas'
 import { logActivity } from '../db/mutations'
@@ -16,7 +16,7 @@ export interface CSVValidationResult {
   isValid: boolean
   errors: string[]
   warnings: string[]
-  sampleData: any[]
+  sampleData: unknown[]
   columnMapping: Record<string, string>
 }
 
@@ -37,7 +37,7 @@ export class CSVImporter {
   validateCSV(csvContent: string): CSVValidationResult {
     const errors: string[] = []
     const warnings: string[] = []
-    const sampleData: any[] = []
+    const sampleData: unknown[] = []
 
     try {
       const result = parse(csvContent, {
@@ -65,7 +65,7 @@ export class CSVImporter {
       // Validate headers if present
       if (this.config.hasHeader && result.meta.fields) {
         const headers = result.meta.fields
-        const columnMapping = csvColumnMappers.mapHeaders(headers)
+        const columnMapping = csvColumnMappers.mapHeaders(headers as string[])
 
         // Check for required fields
         if (!columnMapping.name) {
@@ -151,7 +151,7 @@ export class CSVImporter {
 
       // Process each row
       for (let i = 0; i < result.data.length; i++) {
-        const row = result.data[i] as any
+        const row = result.data[i] as Record<string, unknown>
         const rowNumber = i + (this.config.hasHeader ? 2 : 1) // +2 for header row, +1 for 0-based index
         currentRow++
 
@@ -222,8 +222,8 @@ export class CSVImporter {
   }
 
   // Map CSV row to client data
-  private mapCSVRowToClient(row: any, columnMapping: Record<string, string>): any {
-    const clientData: any = {}
+  private mapCSVRowToClient(row: Record<string, unknown>, columnMapping: Record<string, string>): Record<string, unknown> {
+    const clientData: Record<string, unknown> = {}
 
     // Map each field using the column mapping
     for (const [field, csvColumn] of Object.entries(columnMapping)) {
@@ -263,7 +263,7 @@ export class CSVImporter {
   // Export clients to CSV
   async exportClients(
     orgId: string, 
-    filters?: any, 
+    filters?: Record<string, unknown>, 
     options: {
       includeHeaders?: boolean
       delimiter?: string
@@ -271,7 +271,7 @@ export class CSVImporter {
   ): Promise<string> {
     const clients = await clientAPI.list(orgId, filters)
     
-    const delimiter = options.delimiter || ','
+    // const delimiter = options.delimiter || ',' // unused
     const includeHeaders = options.includeHeaders !== false
 
     // Define headers
@@ -301,7 +301,7 @@ export class CSVImporter {
   }
 
   // Escape CSV field
-  private escapeCSVField(field: any): string {
+  private escapeCSVField(field: unknown): string {
     const stringField = String(field)
     
     // If field contains delimiter, quote, or newline, wrap in quotes
@@ -358,7 +358,7 @@ export const csvImport = {
   },
 
   // Quick export function
-  exportClients: async (orgId: string, filters?: any): Promise<string> => {
+  exportClients: async (orgId: string, filters?: Record<string, unknown>): Promise<string> => {
     const importer = new CSVImporter()
     return importer.exportClients(orgId, filters)
   },

@@ -149,7 +149,7 @@ export const uploadDocument = async (
   uri: string,
   orgId: string,
   clientId: string,
-  jobId?: string
+  // jobId?: string
 ): Promise<UploadResult> => {
   try {
     // Get file information
@@ -166,7 +166,7 @@ export const uploadDocument = async (
     const blob = await uriToBlob(uri)
 
     // Upload to Supabase Storage
-    const { data, error } = await supabase.storage
+    const { error } = await supabase.storage
       .from(STORAGE_BUCKET)
       .upload(path, blob, {
         contentType: fileInfo.mimeType,
@@ -222,7 +222,7 @@ export const uploadLogo = async (uri: string, orgId: string): Promise<UploadResu
     const blob = await uriToBlob(uri)
 
     // Upload to Supabase Storage
-    const { data, error } = await supabase.storage
+    const { error } = await supabase.storage
       .from(STORAGE_BUCKET)
       .upload(path, blob, {
         contentType: fileInfo.mimeType,
@@ -313,7 +313,7 @@ export const deleteDocument = async (path: string): Promise<void> => {
 /**
  * List files in a directory
  */
-export const listFiles = async (path: string): Promise<any[]> => {
+export const listFiles = async (path: string): Promise<Record<string, unknown>[]> => {
   try {
     const { data, error } = await supabase.storage
       .from(STORAGE_BUCKET)
@@ -324,7 +324,7 @@ export const listFiles = async (path: string): Promise<any[]> => {
       throw new Error('Failed to list files')
     }
 
-    return data || []
+    return (data as unknown as Record<string, unknown>[]) || []
   } catch (error) {
     console.error('List files error:', error)
     throw error

@@ -113,7 +113,7 @@ export const AssetUtils = {
     fallback?: string
   ): string {
     const asset = DEFAULT_ASSETS[assetType][assetName]
-    return asset || fallback || DEFAULT_ASSETS.logo
+    return (asset || fallback || DEFAULT_ASSETS.logo) as string
   }
 }
 

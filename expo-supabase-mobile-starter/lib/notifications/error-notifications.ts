@@ -1,5 +1,5 @@
-import { Alert, ToastAndroid, Platform } from 'react-native'
-import { APIError } from '../error-handling'
+import { Alert, Platform, ToastAndroid } from 'react-native'
+import { APIError, ErrorType, ErrorSeverity } from '../error-handling'
 
 export interface NotificationConfig {
   title?: string
@@ -147,7 +147,7 @@ export class ErrorNotificationManager {
 
     // Show platform-specific notification
     if (Platform.OS === 'android' && showToast) {
-      this.showAndroidToast(message, 'error')
+      this.showAndroidToast(message)
     }
 
     if (showAlert) {
@@ -173,11 +173,11 @@ export class ErrorNotificationManager {
 
     // Show platform-specific notification
     if (Platform.OS === 'android' && showToast) {
-      this.showAndroidToast(message, type)
+      this.showAndroidToast(message)
     }
 
     if (showAlert) {
-      this.showAlert(title, message)
+      this.showAlert(title || 'Error', message || 'An unknown error occurred')
     }
 
     // Add to queue for processing
@@ -194,7 +194,7 @@ export class ErrorNotificationManager {
   /**
    * Show Android toast notification
    */
-  private showAndroidToast(message: string, type: 'success' | 'error' | 'warning' | 'info'): void {
+  private showAndroidToast(message: string): void {
     if (Platform.OS === 'android') {
       ToastAndroid.show(message, ToastAndroid.SHORT)
     }
@@ -206,12 +206,12 @@ export class ErrorNotificationManager {
   private showAlert(title: string, message: string, retryAction?: () => void): void {
     const buttons = retryAction 
       ? [
-          { text: 'Cancel', style: 'cancel' },
+          { text: 'Cancel', style: 'cancel' as const },
           { text: 'Retry', onPress: retryAction }
         ]
-      : [{ text: 'OK', style: 'default' }]
+      : [{ text: 'OK', style: 'default' as const }]
 
-    Alert.alert(title, message, buttons)
+    Alert.alert(title || 'Error', message || 'An unknown error occurred', buttons)
   }
 
   /**
@@ -292,8 +292,13 @@ export const ErrorNotifications = {
   showValidationError: (field: string, message: string) => {
     ErrorNotificationManager.showError({
       error: {
+        id: 'validation-error',
         message: `${field}: ${message}`,
+        userMessage: `Please check ${field.toLowerCase()} and try again.`,
         code: 'VALIDATION_ERROR',
+        statusCode: 400,
+        severity: ErrorSeverity.MEDIUM,
+        type: ErrorType.VALIDATION_ERROR,
         timestamp: new Date().toISOString()
       },
       message: `Please check ${field.toLowerCase()} and try again.`,
@@ -307,8 +312,13 @@ export const ErrorNotifications = {
   showNetworkError: (operation: string, retryAction: () => void) => {
     ErrorNotificationManager.showErrorWithRetry(
       {
+        id: 'network-error',
         message: 'Network connection error',
+        userMessage: 'Please check your internet connection and try again.',
         code: 'NETWORK_ERROR',
+        statusCode: 0,
+        severity: ErrorSeverity.HIGH,
+        type: ErrorType.NETWORK_ERROR,
         timestamp: new Date().toISOString()
       },
       operation,
@@ -322,8 +332,13 @@ export const ErrorNotifications = {
   showFileUploadError: (error: string) => {
     ErrorNotificationManager.showError({
       error: {
+        id: 'file-upload-error',
         message: error,
+        userMessage: 'File upload failed. Please try again.',
         code: 'FILE_ERROR',
+        statusCode: 500,
+        severity: ErrorSeverity.MEDIUM,
+        type: ErrorType.FILE_ERROR,
         timestamp: new Date().toISOString()
       },
       message: 'File upload failed. Please try again.',
@@ -337,8 +352,13 @@ export const ErrorNotifications = {
   showPermissionError: (operation: string) => {
     ErrorNotificationManager.showError({
       error: {
+        id: 'permission-error',
         message: 'Permission denied',
+        userMessage: `You don't have permission to ${operation}.`,
         code: 'UNAUTHORIZED',
+        statusCode: 401,
+        severity: ErrorSeverity.HIGH,
+        type: ErrorType.AUTHORIZATION_ERROR,
         timestamp: new Date().toISOString()
       },
       operation,

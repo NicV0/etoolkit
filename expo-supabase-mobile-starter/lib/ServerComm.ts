@@ -2,20 +2,21 @@ import { supabase } from './supabase'
 import { clientAPI } from './api/clients'
 import { quoteAPI } from './api/quotes'
 import { invoiceAPI } from './api/invoices'
-import { pricebookAPI } from './api/pricebook'
-import { documentAPI } from './api/documents'
+import { pricebookAPI, type PricebookItem, type CreatePricebookItemData, type UpdatePricebookItemData } from './api/pricebook'
+import { documentAPI, type DocumentWithUrl, type UploadResult, type DocumentFilters } from './api/documents'
 import { logActivity } from './db/mutations'
 import { generateQuoteNumber, generateInvoiceNumber } from './numbering'
-import { calculateSubtotal, calculateTax, calculateTotal, calculateBalanceDue } from './calculations'
-import type { Database } from '../types/database'
+// import { calculateSubtotal, calculateTax, calculateTotal, calculateBalanceDue } from './calculations'
+// import type { Database } from '../types/database'
 import type { 
   ClientFormData, 
   QuoteFormData, 
   InvoiceFormData, 
   PaymentFormData, 
-  PricebookItemFormData,
+  // PricebookItemFormData,
   LineItemFormData 
 } from './validation'
+
 
 // Type definitions for the integration layer
 export interface Client {
@@ -160,7 +161,7 @@ export class ServerComm {
       .eq('user_id', user.id)
       .single()
 
-    return profile?.organizations as Organization || null
+    return profile?.organizations?.[0] as Organization || null
   }
 
   async createOrganization(data: CreateOrgData): Promise<Organization> {
@@ -196,14 +197,18 @@ export class ServerComm {
       .insert({
         org_id: org.id,
         currency: 'USD',
-        default_tax_pct: '0',
+        default_tax_pct: 0,
         numbering_prefix_quote: 'Q',
         numbering_prefix_invoice: 'INV'
       })
 
     if (settingsError) throw settingsError
 
-    return org
+    return {
+      ...org,
+      size: org.size as 'small' | 'medium' | 'large',
+      plan: org.plan as 'free' | 'pro' | 'enterprise'
+    }
   }
 
   // Client management
@@ -278,11 +283,11 @@ export class ServerComm {
   }
 
   async acceptQuote(quoteId: string): Promise<Quote> {
-    return quoteAPI.accept(quoteId)
+    return quoteAPI.updateStatus(quoteId, 'accepted')
   }
 
   async rejectQuote(quoteId: string): Promise<Quote> {
-    return quoteAPI.reject(quoteId)
+    return quoteAPI.updateStatus(quoteId, 'rejected')
   }
 
   async deleteQuote(quoteId: string): Promise<void> {
@@ -290,7 +295,8 @@ export class ServerComm {
   }
 
   async convertQuoteToInvoice(quoteId: string): Promise<{ invoiceId: string }> {
-    return quoteAPI.convertToInvoice(quoteId)
+    const invoice = await quoteAPI.convertToInvoice(quoteId)
+    return { invoiceId: invoice.id }
   }
 
   async searchQuotes(orgId: string, query: string): Promise<Quote[]> {
@@ -351,19 +357,19 @@ export class ServerComm {
     isQuickPick?: boolean
     limit?: number
     offset?: number
-  }): Promise<any[]> {
+  }): Promise<unknown[]> {
     return pricebookAPI.list(orgId, filters)
   }
 
-  async getPricebookItem(itemId: string): Promise<any> {
+  async getPricebookItem(itemId: string): Promise<unknown> {
     return pricebookAPI.get(itemId)
   }
 
-  async createPricebookItem(orgId: string, data: any): Promise<any> {
+  async createPricebookItem(orgId: string, data: CreatePricebookItemData): Promise<PricebookItem> {
     return pricebookAPI.create(orgId, data)
   }
 
-  async updatePricebookItem(itemId: string, data: any): Promise<any> {
+  async updatePricebookItem(itemId: string, data: UpdatePricebookItemData): Promise<PricebookItem> {
     return pricebookAPI.update(itemId, data)
   }
 
@@ -371,39 +377,35 @@ export class ServerComm {
     return pricebookAPI.delete(itemId)
   }
 
-  async searchPricebookItems(orgId: string, query: string): Promise<any[]> {
+  async searchPricebookItems(orgId: string, query: string): Promise<PricebookItem[]> {
     return pricebookAPI.search(orgId, query)
   }
 
-  async getQuickPicks(orgId: string): Promise<any[]> {
-    return pricebookAPI.getQuickPicks(orgId)
+  async getQuickPicks(orgId: string): Promise<PricebookItem[]> {
+    return pricebookAPI.getQuickPickItems(orgId)
   }
 
-  async getCategories(orgId: string): Promise<any[]> {
+  async getCategories(orgId: string): Promise<string[]> {
     return pricebookAPI.getCategories(orgId)
   }
 
   // Document management
-  async uploadDocument(uri: string, orgId: string, clientId: string, jobId?: string, title?: string): Promise<any> {
+  async uploadDocument(uri: string, orgId: string, clientId: string, jobId?: string, title?: string): Promise<UploadResult> {
     return documentAPI.upload(uri, orgId, clientId, {
       title: title || 'Document',
       jobId
     })
   }
 
-  async getDocuments(clientId: string, filters?: {
-    job_id?: string
-    limit?: number
-    offset?: number
-  }): Promise<any[]> {
+  async getDocuments(clientId: string, filters?: DocumentFilters): Promise<DocumentWithUrl[]> {
     return documentAPI.list(clientId, filters)
   }
 
-  async getDocument(documentId: string): Promise<any> {
+  async getDocument(documentId: string): Promise<DocumentWithUrl> {
     return documentAPI.get(documentId)
   }
 
-  async updateDocument(documentId: string, data: any): Promise<any> {
+  async updateDocument(documentId: string, data: Partial<DocumentWithUrl>): Promise<DocumentWithUrl> {
     return documentAPI.update(documentId, data)
   }
 
@@ -411,28 +413,28 @@ export class ServerComm {
     return documentAPI.delete(documentId)
   }
 
-  async searchDocuments(clientId: string, query: string): Promise<any[]> {
+  async searchDocuments(clientId: string, query: string): Promise<DocumentWithUrl[]> {
     return documentAPI.search(clientId, query)
   }
 
   // Statistics and reporting
-  async getClientStats(orgId: string): Promise<any> {
+  async getClientStats(orgId: string): Promise<Record<string, unknown>> {
     return clientAPI.getStats(orgId)
   }
 
-  async getQuoteStats(orgId: string): Promise<any> {
+  async getQuoteStats(orgId: string): Promise<Record<string, unknown>> {
     return quoteAPI.getStats(orgId)
   }
 
-  async getInvoiceStats(orgId: string): Promise<any> {
+  async getInvoiceStats(orgId: string): Promise<Record<string, unknown>> {
     return invoiceAPI.getStats(orgId)
   }
 
-  async getPricebookStats(orgId: string): Promise<any> {
+  async getPricebookStats(orgId: string): Promise<Record<string, unknown>> {
     return pricebookAPI.getStats(orgId)
   }
 
-  async getDocumentStats(clientId: string): Promise<any> {
+  async getDocumentStats(clientId: string): Promise<Record<string, unknown>> {
     return documentAPI.getStats(clientId)
   }
 
@@ -446,29 +448,10 @@ export class ServerComm {
   }
 
   // Activity logging
-  async logActivity(orgId: string, entityType: string, entityId: string, action: string, meta?: any): Promise<void> {
+  async logActivity(orgId: string, entityType: string, entityId: string, action: 'created' | 'updated' | 'deleted' | 'sent' | 'viewed' | 'paid' | 'imported' | 'uploaded' | 'status_updated' | 'recorded', meta?: Record<string, unknown>): Promise<void> {
     return logActivity(orgId, entityType, entityId, action, meta)
   }
 }
 
 // Export singleton instance
 export const serverComm = ServerComm.getInstance()
-
-// Export type definitions for use in state management
-export type {
-  Client,
-  Quote,
-  Invoice,
-  LineItem,
-  Organization,
-  CreateOrgData
-}
-
-// Re-export validation types for backward compatibility
-export type {
-  CreateClientData,
-  UpdateClientData,
-  CreateQuoteData,
-  CreateInvoiceData,
-  PaymentData
-}

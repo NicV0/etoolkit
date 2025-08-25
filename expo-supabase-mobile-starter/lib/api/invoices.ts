@@ -173,14 +173,15 @@ export const invoiceAPI = {
     const number = await generateInvoiceNumber(orgId)
 
     // Calculate totals
-    const itemsWithTotals = validatedData.items.map((item, index) => ({
-      ...item,
-      id: `temp_${index}`,
-      line_total: item.quantity * item.unit_price
-    }))
-    const subtotal = calculateSubtotal(itemsWithTotals)
-    const taxTotal = calculateTax(subtotal, validatedData.tax_rate_pct, itemsWithTotals)
-    const total = calculateTotal(subtotal, taxTotal, validatedData.discount_amt)
+    const subtotal = calculateSubtotal(validatedData.items.map(item => ({
+      description: item.description,
+      quantity: item.quantity,
+      unit: 'item',
+      unitPrice: item.unit_price,
+      taxable: item.taxable
+    })));
+    const taxTotal = calculateTax(subtotal, validatedData.tax_rate_pct);
+    const total = calculateTotal(subtotal, taxTotal);
 
     // Set default dates
     const issueDate = data.issue_date || new Date().toISOString().split('T')[0]
@@ -263,18 +264,26 @@ export const invoiceAPI = {
         id: `temp_${index}`,
         line_total: item.quantity * item.unit_price
       }))
-      subtotal = calculateSubtotal(itemsWithTotals)
-      taxTotal = calculateTax(subtotal, validatedData.tax_rate_pct || existingInvoice.tax_rate_pct, itemsWithTotals)
-      total = calculateTotal(subtotal, taxTotal, validatedData.discount_amt || existingInvoice.discount_amt)
+      // Recalculate totals
+      subtotal = calculateSubtotal(itemsWithTotals.map(item => ({
+        description: item.description,
+        quantity: item.quantity,
+        unit: 'item',
+        unitPrice: item.unit_price,
+        taxable: item.taxable
+      })));
+      taxTotal = calculateTax(subtotal, validatedData.tax_rate_pct || existingInvoice.tax_rate_pct);
+      total = calculateTotal(subtotal, taxTotal);
     } else if (validatedData.tax_rate_pct !== undefined || validatedData.discount_amt !== undefined) {
       const taxRate = validatedData.tax_rate_pct ?? existingInvoice.tax_rate_pct
       const discount = validatedData.discount_amt ?? existingInvoice.discount_amt
-      taxTotal = calculateTax(subtotal, taxRate, existingInvoice.items)
-      total = calculateTotal(subtotal, taxTotal, discount)
+      // Recalculate totals
+      taxTotal = calculateTax(subtotal, taxRate);
+      total = calculateTotal(subtotal, taxTotal);
     }
 
     // Calculate new balance due
-    const balanceDue = calculateBalanceDue(total, existingInvoice.payments)
+    const balanceDue = calculateBalanceDue(total, existingInvoice.payments.map(payment => payment.amount))
 
     // Update invoice
     const { data: invoice, error } = await supabase
@@ -387,7 +396,7 @@ export const invoiceAPI = {
     }
 
     // Calculate new balance due
-    const newBalanceDue = calculateBalanceDue(invoice.total, [...invoice.payments, payment])
+    const newBalanceDue = calculateBalanceDue(invoice.total, [...invoice.payments, payment].map(p => p.amount))
 
     // Update invoice balance and status
     const newStatus = newBalanceDue === 0 ? 'paid' : invoice.status

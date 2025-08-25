@@ -11,11 +11,15 @@
     "plugins": [
       "expo-secure-store",
       "expo-notifications",
-      "expo-document-picker"
+      "expo-document-picker",
+      "expo-dev-client"
     ],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.etoolkit.app"
+      "bundleIdentifier": "com.etoolkit.app",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "adaptiveIcon": {

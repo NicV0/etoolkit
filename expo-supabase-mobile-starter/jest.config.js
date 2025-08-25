@@ -1,25 +1,56 @@
 module.exports = {
-  preset: 'ts-jest',
+  preset: 'jest-expo',
+  setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
+  transformIgnorePatterns: [
+    'node_modules/(?!((jest-)?react-native|@react-native(-community)?)|expo(nent)?|@expo(nent)?/.*|@expo-google-fonts/.*|react-navigation|@react-navigation/.*|@unimodules/.*|unimodules|sentry-expo|native-base|react-native-svg)',
+  ],
+  moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json'],
+  testMatch: [
+    '**/__tests__/**/*.(ts|tsx|js)',
+    '**/?(*.)+(spec|test).(ts|tsx|js)',
+  ],
+  collectCoverageFrom: [
+    '**/*.{ts,tsx}',
+    '!**/coverage/**',
+    '!**/node_modules/**',
+    '!**/__tests__/**',
+    '!**/types/**',
+    '!**/*.d.ts',
+    '!**/index.ts',
+    '!**/jest.setup.js',
+    '!**/jest.config.js',
+  ],
+  coverageThreshold: {
+    global: {
+      branches: 70,
+      functions: 70,
+      lines: 70,
+      statements: 70,
+    },
+  },
   testEnvironment: 'node',
-  testMatch: ['**/test/**/*.test.ts', '**/__tests__/**/*.test.ts'],
-  transform: {
-    '^.+\\.(ts|tsx)$': ['ts-jest', {
+  globals: {
+    'ts-jest': {
       tsconfig: {
         module: 'commonjs',
         target: 'es2017',
-        jsx: 'react-jsx',
+        lib: ['es2017'],
         allowJs: true,
-        esModuleInterop: true,
         skipLibCheck: true,
-        moduleResolution: 'node'
-      }
-    }],
+        esModuleInterop: true,
+        allowSyntheticDefaultImports: true,
+        strict: true,
+        forceConsistentCasingInFileNames: true,
+        moduleResolution: 'node',
+        resolveJsonModule: true,
+        isolatedModules: true,
+        noEmit: true,
+        jsx: 'react-jsx',
+      },
+    },
   },
-  moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json', 'node'],
-  testPathIgnorePatterns: [
-    '/node_modules/',
-    '/.expo/',
-    '/dist/',
-    '/build/'
-  ]
-}
+  moduleNameMapper: {
+    '^@/(.*)$': '<rootDir>/$1',
+  },
+  testTimeout: 10000,
+};

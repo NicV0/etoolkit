@@ -6,8 +6,8 @@ import type {
   PricebookItem, 
   Job, 
   Document,
-  Organization,
-  Profile,
+  // Organization,
+  // Profile,
   Activity,
   Reminder
 } from '../../types/database'
@@ -21,7 +21,7 @@ export const getOrgClients = async (orgId: string, status?: string) => {
     .order('name')
 
   if (status) {
-    query = query.eq('status', status)
+    query = query.eq('status', status as 'active' | 'inactive' | 'prospect')
   }
 
   const { data, error } = await query
@@ -41,7 +41,7 @@ export const getOrgQuotes = async (orgId: string, status?: string) => {
     .order('created_at', { ascending: false })
 
   if (status) {
-    query = query.eq('status', status)
+    query = query.eq('status', status as 'sent' | 'draft' | 'accepted' | 'rejected' | 'expired')
   }
 
   const { data, error } = await query
@@ -62,15 +62,15 @@ export const getOrgInvoices = async (orgId: string, status?: string) => {
     .order('created_at', { ascending: false })
 
   if (status) {
-    query = query.eq('status', status)
+    query = query.eq('status', status as 'sent' | 'paid' | 'draft' | 'overdue' | 'cancelled')
   }
 
   const { data, error } = await query
   if (error) throw error
   return data as (Invoice & { 
     clients: { name: string; email: string | null }
-    invoice_items: any[]
-    payments: any[]
+    invoice_items: Record<string, unknown>[]
+    payments: Record<string, unknown>[]
   })[]
 }
 
@@ -149,7 +149,7 @@ export const getQuoteWithItems = async (quoteId: string) => {
   return data as Quote & { 
     clients: Client
     jobs: Job
-    quote_items: any[]
+    quote_items: Record<string, unknown>[]
   }
 }
 
@@ -168,7 +168,7 @@ export const getQuoteByNumber = async (orgId: string, number: string) => {
   if (error) throw error
   return data as Quote & { 
     clients: Client
-    quote_items: any[]
+    quote_items: Record<string, unknown>[]
   }
 }
 
@@ -190,8 +190,8 @@ export const getInvoiceWithItems = async (invoiceId: string) => {
   return data as Invoice & { 
     clients: Client
     jobs: Job
-    invoice_items: any[]
-    payments: any[]
+    invoice_items: Record<string, unknown>[]
+    payments: Record<string, unknown>[]
   }
 }
 
@@ -211,8 +211,8 @@ export const getInvoiceByNumber = async (orgId: string, number: string) => {
   if (error) throw error
   return data as Invoice & { 
     clients: Client
-    invoice_items: any[]
-    payments: any[]
+    invoice_items: Record<string, unknown>[]
+    payments: Record<string, unknown>[]
   }
 }
 
@@ -228,7 +228,7 @@ export const getOrgJobs = async (orgId: string, status?: string) => {
     .order('due_date', { ascending: true })
 
   if (status) {
-    query = query.eq('status', status)
+    query = query.eq('status', status as 'cancelled' | 'pending' | 'in_progress' | 'completed')
   }
 
   const { data, error } = await query
@@ -312,7 +312,7 @@ export const getRecentActivities = async (orgId: string, limit: number = 10) => 
     .limit(limit)
 
   if (error) throw error
-  return data as (Activity & { profiles: { display_name: string | null } })[]
+  return data as unknown as (Activity & { profiles: { display_name: string | null } })[]
 }
 
 export const getEntityActivities = async (orgId: string, entityType: string, entityId: string) => {
@@ -328,7 +328,7 @@ export const getEntityActivities = async (orgId: string, entityType: string, ent
     .order('created_at', { ascending: false })
 
   if (error) throw error
-  return data as (Activity & { profiles: { display_name: string | null } })[]
+  return data as unknown as (Activity & { profiles: { display_name: string | null } })[]
 }
 
 // Reminder queries

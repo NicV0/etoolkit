@@ -4,7 +4,7 @@ import { getDatabase } from '../sqlite';
 export interface KitAITool {
   name: string;
   description: string;
-  execute: (query: string, orgId: string) => Promise<any>;
+  execute: (query: string, orgId: string) => Promise<unknown>;
 }
 
 export interface SearchResult {
@@ -112,7 +112,7 @@ export class KitAITools {
       return similarItems?.map(item => ({
         description: item.name,
         quantity: 1,
-        unitPrice: parseFloat(item.unit_price),
+        unitPrice: typeof item.unit_price === 'string' ? parseFloat(item.unit_price) : item.unit_price,
         category: item.category,
         confidence: this.calculateConfidence(description, item.name, item.category)
       })) || [];
@@ -126,7 +126,7 @@ export class KitAITools {
   /**
    * Create a draft quote structure
    */
-  async createDraftQuote(clientId: string, items: DraftSuggestion[]): Promise<any> {
+  async createDraftQuote(clientId: string, items: DraftSuggestion[]): Promise<Record<string, unknown>> {
     try {
       const { data: client } = await supabase
         .from('clients')
@@ -139,7 +139,8 @@ export class KitAITools {
       const quoteData = {
         org_id: client.org_id,
         client_id: clientId,
-        status: 'draft',
+        number: `Q${Date.now()}`, // Generate a temporary number
+        status: 'draft' as const,
         currency: 'USD',
         tax_rate_pct: 0,
         discount_amt: 0,
@@ -235,7 +236,7 @@ export class KitAITools {
   /**
    * Process natural language queries
    */
-  async processQuery(query: string, orgId: string): Promise<any> {
+  async processQuery(query: string, orgId: string): Promise<unknown> {
     const lowerQuery = query.toLowerCase();
 
     // Handle different types of queries
@@ -309,13 +310,16 @@ export class KitAITools {
         [orgId, `%${query}%`, `%${query}%`, `%${query}%`]
       );
 
-      return results.map((client: any) => ({
-        id: client.id,
-        title: client.name,
-        description: `${client.email} • ${client.phone}`,
-        type: 'client' as const,
-        relevance: this.calculateRelevance(query, client.name, client.email, client.phone)
-      }));
+      return results.map((client: unknown) => {
+        const typedClient = client as Record<string, unknown>;
+        return {
+          id: String(typedClient.id),
+          title: String(typedClient.name),
+          description: `${typedClient.email} • ${typedClient.phone}`,
+          type: 'client' as const,
+          relevance: this.calculateRelevance(query, String(typedClient.name), String(typedClient.email), String(typedClient.phone))
+        };
+      });
 
     } catch (error) {
       console.warn('Offline client search failed:', error);
@@ -334,13 +338,16 @@ export class KitAITools {
         [orgId, `%${query}%`, `%${query}%`, `%${query}%`]
       );
 
-      return results.map((item: any) => ({
-        id: item.id,
-        title: item.name,
-        description: `${item.code} • $${item.unit_price} per ${item.unit}`,
-        type: 'pricebook' as const,
-        relevance: this.calculateRelevance(query, item.name, item.code, item.category)
-      }));
+      return results.map((item: unknown) => {
+        const typedItem = item as Record<string, unknown>;
+        return {
+          id: String(typedItem.id),
+          title: String(typedItem.name),
+          description: `${typedItem.code} • $${typedItem.unit_price} per ${typedItem.unit}`,
+          type: 'pricebook' as const,
+          relevance: this.calculateRelevance(query, String(typedItem.name), String(typedItem.code), String(typedItem.category))
+        };
+      });
 
     } catch (error) {
       console.warn('Offline pricebook search failed:', error);
@@ -362,9 +369,9 @@ export class KitAITools {
       return results?.map(quote => ({
         id: quote.id,
         title: `Quote ${quote.number}`,
-        description: `${quote.clients?.name || 'Unknown Client'} • $${quote.total} • ${quote.status}`,
+        description: `${(quote.clients as any)?.name || 'Unknown Client'} • $${quote.total} • ${quote.status}`,
         type: 'quote' as const,
-        relevance: this.calculateRelevance(query, quote.number, quote.clients?.name || '')
+        relevance: this.calculateRelevance(query, quote.number, (quote.clients as any)?.name || '')
       })) || [];
 
     } catch (error) {
@@ -387,9 +394,9 @@ export class KitAITools {
       return results?.map(invoice => ({
         id: invoice.id,
         title: `Invoice ${invoice.number}`,
-        description: `${invoice.clients?.name || 'Unknown Client'} • $${invoice.total} • ${invoice.status}`,
+        description: `${(invoice.clients as any)?.name || 'Unknown Client'} • $${invoice.total} • ${invoice.status}`,
         type: 'invoice' as const,
-        relevance: this.calculateRelevance(query, invoice.number, invoice.clients?.name || '')
+        relevance: this.calculateRelevance(query, invoice.number, (invoice.clients as any)?.name || '')
       })) || [];
 
     } catch (error) {

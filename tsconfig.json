@@ -5,8 +5,9 @@
     "moduleResolution": "Node",
     "esModuleInterop": true,
     "skipLibCheck": true,
-    "strict": false,
-    "jsx": "react"
+    "strict": true,
+    "jsx": "react-jsx",
+    "forceConsistentCasingInFileNames": true
   },
-  "include": ["apps/**/*", "tests/**/*"]
+  "include": ["expo-supabase-mobile-starter/**/*", "**/*.ts", "**/*.tsx"]
 }

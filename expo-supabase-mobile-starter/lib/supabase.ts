@@ -1,10 +1,15 @@
-import { createClient } from '@supabase/supabase-js'
+import { createClient, SupabaseClient } from '@supabase/supabase-js'
 import * as SecureStore from 'expo-secure-store'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import type { Database } from '../types/database'
 
+type Json = Database['public']['Tables']['activities']['Row']['meta']
+
 const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL!
 const SUPABASE_ANON_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY!
+
+// Clamp generics here so downstream code doesn't re-infer the giant union types
+export type DBClient = SupabaseClient<Database>
 
 // Custom storage adapter that uses both SecureStore and AsyncStorage
 const ExpoSecureStoreAdapter = {
@@ -44,9 +49,9 @@ const ExpoSecureStoreAdapter = {
 }
 
 // Create typed Supabase client
-export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_ANON_KEY, {
+export const supabase: DBClient = createClient<Database>(SUPABASE_URL, SUPABASE_ANON_KEY, {
   auth: {
-    storage: ExpoSecureStoreAdapter as any,
+    storage: ExpoSecureStoreAdapter,
     autoRefreshToken: true,
     persistSession: true,
     detectSessionInUrl: false
@@ -138,7 +143,7 @@ export class EToolkitClient {
       .insert({
         org_id: org.id,
         currency: 'USD',
-        default_tax_pct: '0',
+        default_tax_pct: 0,
         numbering_prefix_quote: 'Q',
         numbering_prefix_invoice: 'INV'
       })
@@ -160,7 +165,7 @@ export class EToolkitClient {
       .order('name')
 
     if (filters?.status) {
-      query = query.eq('status', filters.status)
+      query = query.eq('status', filters.status as 'active' | 'inactive' | 'prospect')
     }
 
     if (filters?.search) {
@@ -211,7 +216,7 @@ export class EToolkitClient {
       .order('created_at', { ascending: false })
 
     if (filters?.status) {
-      query = query.eq('status', filters.status)
+      query = query.eq('status', filters.status as 'sent' | 'draft' | 'accepted' | 'rejected' | 'expired')
     }
 
     if (filters?.clientId) {
@@ -255,8 +260,8 @@ export class EToolkitClient {
         client_id: data.client_id,
         job_id: data.job_id,
         status: 'draft',
-        tax_rate_pct: data.tax_rate_pct?.toString() || '0',
-        discount_amt: data.discount_amt?.toString() || '0',
+        tax_rate_pct: data.tax_rate_pct || 0,
+        discount_amt: data.discount_amt || 0,
         terms: data.terms
       })
       .select()
@@ -268,10 +273,10 @@ export class EToolkitClient {
     const items = data.items.map((item, index) => ({
       quote_id: quote.id,
       description: item.description,
-      quantity: item.quantity.toString(),
-      unit_price: item.unit_price.toString(),
+      quantity: item.quantity,
+      unit_price: item.unit_price,
       taxable: item.taxable ?? true,
-      line_total: (item.quantity * item.unit_price).toString(),
+      line_total: item.quantity * item.unit_price,
       sort_order: index
     }))
 
@@ -301,7 +306,7 @@ export class EToolkitClient {
       .order('created_at', { ascending: false })
 
     if (filters?.status) {
-      query = query.eq('status', filters.status)
+      query = query.eq('status', filters.status as 'sent' | 'paid' | 'draft' | 'overdue' | 'cancelled')
     }
 
     if (filters?.clientId) {
@@ -323,7 +328,7 @@ export class EToolkitClient {
       .insert({
         invoice_id: invoiceId,
         method: data.method,
-        amount: data.amount.toString(),
+        amount: data.amount,
         note: data.note
       })
       .select()
@@ -367,7 +372,7 @@ export class EToolkitClient {
     entity_type: string
     entity_id: string
     action: 'created' | 'updated' | 'deleted' | 'sent' | 'viewed' | 'paid'
-    meta?: any
+    meta?: Record<string, unknown>
   }) {
     const user = await this.getCurrentUser()
     
@@ -379,7 +384,7 @@ export class EToolkitClient {
         entity_type: data.entity_type,
         entity_id: data.entity_id,
         action: data.action,
-        meta: data.meta
+        meta: data.meta as Json
       })
 
     if (error) {

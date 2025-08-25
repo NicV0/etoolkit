@@ -1,408 +1,508 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, FlatList, RefreshControl, TextInput } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import React, { useState, useCallback } from 'react';
+import {
+  View,
+  ScrollView,
+  RefreshControl,
+  StyleSheet,
+  Alert,
+  Text,
+} from 'react-native';
 import { router } from 'expo-router';
-import { 
-  Plus, 
-  Search, 
-  User, 
-  Phone, 
-  Mail, 
-  MapPin,
-  Settings,
-  Users
-} from 'lucide-react-native';
-import { designSystem } from '../../../theme/design-system';
-import { SkeletonList, ErrorMessage, AnimatedButton, AnimatedListItem } from '../../../components/ui';
+// import { Plus } from 'lucide-react-native';
 
-// Mock client data - replace with real data from API
-const mockClients = [
-  {
-    id: '1',
-    name: 'John Smith',
-    company: 'Smith Construction',
-    phone: '+1 (555) 123-4567',
-    email: 'john@smithconstruction.com',
-    address: '123 Main St, Anytown, ST 12345',
-    status: 'active',
-    totalQuotes: 5,
-    totalInvoices: 3,
-    lastContact: '2024-01-15'
-  },
-  {
-    id: '2',
-    name: 'Sarah Johnson',
-    company: 'Johnson Renovations',
-    phone: '+1 (555) 987-6543',
-    email: 'sarah@johnsonreno.com',
-    address: '456 Oak Ave, Somewhere, ST 67890',
-    status: 'active',
-    totalQuotes: 3,
-    totalInvoices: 2,
-    lastContact: '2024-01-10'
-  },
-  {
-    id: '3',
-    name: 'Mike Wilson',
-    company: 'Wilson Builders',
-    phone: '+1 (555) 456-7890',
-    email: 'mike@wilsonbuilders.com',
-    address: '789 Pine Rd, Elsewhere, ST 11111',
-    status: 'prospect',
-    totalQuotes: 1,
-    totalInvoices: 0,
-    lastContact: '2024-01-05'
-  }
-];
+// Components
+import {
+  Card,
+  Button,
+  Badge,
+  SearchInput,
+  SkeletonCard,
+  Modal,
+  ModalHeader,
+  ModalContent,
+  ModalFooter,
+} from '../../../components/ui';
 
-export default function ClientsScreen() {
-  const [clients, setClients] = useState(mockClients);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [isLoading, setIsLoading] = useState(true);
-  const [isRefreshing, setIsRefreshing] = useState(false);
-  const [hasError, setHasError] = useState(false);
+// Hooks
+import {
+  useClients,
+  useDeleteClient,
+  useRefreshData,
+} from '../../../lib/query/hooks';
 
-  // Simulate loading
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setIsLoading(false);
-    }, 1500);
+// Theme
+import { theme } from '../../../lib/theme/tokens';
+import { textStyles } from '../../../lib/theme/utils';
 
-    return () => clearTimeout(timer);
-  }, []);
+// Types
+import { ClientWithJobs } from '../../../lib/api/clients';
+import { ClientFilters } from '../../../lib/database/types';
 
-  const onRefresh = async () => {
-    setIsRefreshing(true);
-    setHasError(false);
-    
-    try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      setClients(mockClients);
-    } catch (error) {
-      setHasError(true);
-    } finally {
-      setIsRefreshing(false);
-    }
-  };
+type Client = ClientWithJobs;
 
-  const retryLoad = () => {
-    setIsLoading(true);
-    setHasError(false);
-    
-    setTimeout(() => {
-      setIsLoading(false);
-    }, 1000);
-  };
+// Client card component
+const ClientCard: React.FC<{
+  client: Client;
+  onEdit: (client: Client) => void;
+  onDelete: (client: Client) => void;
+}> = ({ client, onEdit, onDelete }) => {
+  const handleEdit = useCallback(() => {
+    onEdit(client);
+  }, [client, onEdit]);
 
-  const filteredClients = clients.filter(client =>
-    client.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    client.company.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    client.email.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const handleDelete = useCallback(() => {
+    onDelete(client);
+  }, [client, onDelete]);
 
-  const renderClientCard = ({ item: client, index }: { item: typeof mockClients[0], index: number }) => (
-    <AnimatedListItem
-      index={index}
-      onPress={() => router.push(`/clients/${client.id}`)}
-      style={{ marginBottom: designSystem.spacing.sm }}
-    >
-      <View style={{ flexDirection: 'row', alignItems: 'flex-start', marginBottom: designSystem.spacing.md }}>
-        <View style={{
-          width: 48,
-          height: 48,
-          borderRadius: designSystem.borderRadius.lg,
-          backgroundColor: designSystem.colors.primary[50],
-          alignItems: 'center',
-          justifyContent: 'center',
-          marginRight: designSystem.spacing.md,
-        }}>
-          <User size={24} color={designSystem.colors.primary[500]} />
-        </View>
-        <View style={{ flex: 1 }}>
-          <Text style={{
-            fontSize: designSystem.typography.fontSize.lg,
-            fontWeight: designSystem.typography.fontWeight.semibold,
-            color: designSystem.colors.text.primary,
-            marginBottom: designSystem.spacing.xs,
-          }}>
-            {client.name}
+  return (
+    <Card variant="elevated" style={styles.clientCard}>
+      <View style={styles.clientHeader}>
+        <View style={styles.clientInfo}>
+          <View style={styles.clientNameRow}>
+            <Text style={[textStyles.h3, styles.clientName]}>
+              {client.name}
+            </Text>
+            <Badge variant={client.status === 'active' ? 'success' : 'warning'}>
+              {client.status}
+            </Badge>
+          </View>
+          {/* contact_name not available in current API response */}
+          <Text style={[textStyles.body, styles.clientEmail]}>
+            {client.email}
           </Text>
-          <Text style={{
-            fontSize: designSystem.typography.fontSize.sm,
-            color: designSystem.colors.text.secondary,
-            marginBottom: designSystem.spacing.xs,
-          }}>
-            {client.company}
-          </Text>
-          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: designSystem.spacing.xs }}>
-            <Phone size={14} color={designSystem.colors.text.tertiary} />
-            <Text style={{
-              fontSize: designSystem.typography.fontSize.sm,
-              color: designSystem.colors.text.tertiary,
-              marginLeft: designSystem.spacing.xs,
-            }}>
+          {client.phone && (
+            <Text style={[textStyles.body, styles.clientPhone]}>
               {client.phone}
             </Text>
-          </View>
-          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-            <Mail size={14} color={designSystem.colors.text.tertiary} />
-            <Text style={{
-              fontSize: designSystem.typography.fontSize.sm,
-              color: designSystem.colors.text.tertiary,
-              marginLeft: designSystem.spacing.xs,
-            }}>
-              {client.email}
-            </Text>
-          </View>
+          )}
         </View>
-        <View style={{
-          backgroundColor: client.status === 'active' 
-            ? designSystem.colors.success[50] 
-            : designSystem.colors.warning[50],
-          borderRadius: designSystem.borderRadius.md,
-          paddingHorizontal: designSystem.spacing.sm,
-          paddingVertical: designSystem.spacing.xs,
-        }}>
-          <Text style={{
-            fontSize: designSystem.typography.fontSize.xs,
-            fontWeight: designSystem.typography.fontWeight.medium,
-            color: client.status === 'active' 
-              ? designSystem.colors.success[600] 
-              : designSystem.colors.warning[600],
-            textTransform: 'uppercase',
-          }}>
-            {client.status}
-          </Text>
-        </View>
-      </View>
-      
-      <View style={{ 
-        flexDirection: 'row', 
-        justifyContent: 'space-between',
-        paddingTop: designSystem.spacing.md,
-        borderTopWidth: 1,
-        borderTopColor: 'rgba(0, 0, 0, 0.05)',
-      }}>
-        <View style={{ alignItems: 'center' }}>
-          <Text style={{
-            fontSize: designSystem.typography.fontSize.lg,
-            fontWeight: designSystem.typography.fontWeight.bold,
-            color: designSystem.colors.text.primary,
-          }}>
-            {client.totalQuotes}
-          </Text>
-          <Text style={{
-            fontSize: designSystem.typography.fontSize.xs,
-            color: designSystem.colors.text.tertiary,
-          }}>
-            Quotes
-          </Text>
-        </View>
-        <View style={{ alignItems: 'center' }}>
-          <Text style={{
-            fontSize: designSystem.typography.fontSize.lg,
-            fontWeight: designSystem.typography.fontWeight.bold,
-            color: designSystem.colors.text.primary,
-          }}>
-            {client.totalInvoices}
-          </Text>
-          <Text style={{
-            fontSize: designSystem.typography.fontSize.xs,
-            color: designSystem.colors.text.tertiary,
-          }}>
-            Invoices
-          </Text>
-        </View>
-        <View style={{ alignItems: 'center' }}>
-          <Text style={{
-            fontSize: designSystem.typography.fontSize.sm,
-            color: designSystem.colors.text.secondary,
-          }}>
-            {new Date(client.lastContact).toLocaleDateString()}
-          </Text>
-          <Text style={{
-            fontSize: designSystem.typography.fontSize.xs,
-            color: designSystem.colors.text.tertiary,
-          }}>
-            Last Contact
-          </Text>
-        </View>
-      </View>
-    </AnimatedListItem>
-  );
-
-  if (hasError) {
-    return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: '#f5f7fb' }}>
-        <View style={{ flex: 1, padding: designSystem.spacing.md }}>
-          <ErrorMessage
-            title="Failed to load clients"
-            message="There was an error loading your clients. Please check your connection and try again."
-            onRetry={retryLoad}
+        <View style={styles.clientActions}>
+          <Button
+            variant="ghost"
+            size="sm"
+            onPress={handleEdit}
+            style={styles.actionButton}
+            title="Edit"
+          />
+          <Button
+            variant="ghost"
+            size="sm"
+            onPress={handleDelete}
+            style={styles.actionButton}
+            title="Delete"
           />
         </View>
-      </SafeAreaView>
+      </View>
+    </Card>
+  );
+};
+
+// Empty state component
+const EmptyState: React.FC<{ onAddClient: () => void }> = ({ onAddClient }) => (
+  <View style={styles.emptyState}>
+    <Text style={[textStyles.h2, styles.emptyTitle]}>
+      No clients yet
+    </Text>
+    <Text style={[textStyles.body, styles.emptySubtitle]}>
+      Get started by adding your first client
+    </Text>
+    <Button
+      variant="primary"
+      size="lg"
+      onPress={onAddClient}
+      style={styles.emptyButton}
+      title="Add Client"
+    />
+  </View>
+);
+
+// Loading skeleton component
+const LoadingSkeleton: React.FC = () => (
+  <View style={styles.skeletonContainer}>
+    {Array.from({ length: 5 }).map((_, index) => (
+      <SkeletonCard key={index} style={styles.skeletonCard} />
+    ))}
+  </View>
+);
+
+// Main Clients screen
+export default function ClientsScreen() {
+  // State
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
+  const [selectedClient, setSelectedClient] = useState<Client | null>(null);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+
+  // Query hooks
+  const filters: ClientFilters = {
+    search: searchQuery || undefined,
+    status: statusFilter === 'all' ? undefined : statusFilter,
+  };
+
+  // Convert filters to match the expected type
+  const apiFilters = filters?.status || 'active';
+
+  const {
+    data: clientsData,
+    isLoading,
+    isError,
+    error,
+    refetch,
+  } = useClients(apiFilters);
+
+  const deleteClientMutation = useDeleteClient();
+  const { refreshClients } = useRefreshData();
+
+  // Handlers
+  const handleSearch = useCallback((query: string) => {
+    setSearchQuery(query);
+  }, []);
+
+  const handleRefresh = useCallback(async () => {
+    await refetch();
+    refreshClients();
+  }, [refetch, refreshClients]);
+
+  const handleAddClient = useCallback(() => {
+    router.push('/clients/new');
+  }, []);
+
+  const handleEditClient = useCallback((client: Client) => {
+    router.push(`/clients/${client.id}`);
+  }, []);
+
+  const handleDeleteClient = useCallback((client: Client) => {
+    setSelectedClient(client);
+    setShowDeleteModal(true);
+  }, []);
+
+  const confirmDelete = useCallback(async () => {
+    if (!selectedClient) return;
+
+    try {
+      await deleteClientMutation.mutateAsync(selectedClient.id.toString());
+      setShowDeleteModal(false);
+      setSelectedClient(null);
+    } catch (error) {
+      Alert.alert('Error', 'Failed to delete client. Please try again.');
+    }
+  }, [selectedClient, deleteClientMutation]);
+
+  const cancelDelete = useCallback(() => {
+    setShowDeleteModal(false);
+    setSelectedClient(null);
+  }, []);
+
+  const handleSettings = useCallback(() => {
+    router.push('/dashboard/settings');
+  }, []);
+
+  // Error state
+  if (isError) {
+    return (
+      <View style={styles.errorContainer}>
+        <Text style={[textStyles.h2, styles.errorTitle]}>
+          Something went wrong
+        </Text>
+        <Text style={[textStyles.body, styles.errorMessage]}>
+          {error?.message || 'Failed to load clients'}
+        </Text>
+        <Button
+          variant="primary"
+          size="lg"
+          onPress={handleRefresh}
+          style={styles.errorButton}
+          title="Try Again"
+        />
+      </View>
     );
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: '#f5f7fb' }}>
-      <View style={{ flex: 1 }}>
-        {/* Header */}
-        <View style={{ 
-          padding: designSystem.spacing.md,
-          paddingBottom: designSystem.spacing.sm,
-        }}>
-          <View style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            marginBottom: designSystem.spacing.md,
-          }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-              <View style={{
-                width: 48,
-                height: 48,
-                borderRadius: designSystem.borderRadius.lg,
-                backgroundColor: designSystem.colors.primary[50],
-                alignItems: 'center',
-                justifyContent: 'center',
-                marginRight: designSystem.spacing.md,
-              }}>
-                <Users size={24} color={designSystem.colors.primary[500]} />
-              </View>
-              <View>
-                <Text style={{
-                  fontSize: designSystem.typography.fontSize['3xl'],
-                  fontWeight: designSystem.typography.fontWeight.bold,
-                  color: designSystem.colors.text.primary,
-                }}>
-                  Clients
-                </Text>
-                <Text style={{
-                  fontSize: designSystem.typography.fontSize.sm,
-                  color: designSystem.colors.text.secondary,
-                }}>
-                  {clients.length} total clients
-                </Text>
-              </View>
-            </View>
-            <View style={{ flexDirection: 'row', gap: designSystem.spacing.sm }}>
-              <AnimatedButton
-                title=""
-                onPress={() => router.push('/settings')}
-                variant="secondary"
-                size="sm"
-                icon={<Settings size={20} color={designSystem.colors.text.secondary} />}
-              />
-              <AnimatedButton
-                title=""
-                onPress={() => router.push('/clients/new')}
-                variant="primary"
-                size="sm"
-                icon={<Plus size={20} color="#ffffff" />}
-              />
-            </View>
+    <View style={styles.container}>
+      {/* Header */}
+      <View style={styles.header}>
+        <View style={styles.headerTop}>
+          <View style={styles.headerLeft}>
+            <Text style={[textStyles.h2, styles.screenTitle]}>
+              Clients
+            </Text>
+            {clientsData && (
+              <Text style={[textStyles.body, styles.clientCount]}>
+                {clientsData?.length || 0} client{(clientsData?.length || 0) !== 1 ? 's' : ''}
+              </Text>
+            )}
           </View>
-
-          {/* Search */}
-          <View style={{
-            backgroundColor: 'rgba(255, 255, 255, 0.8)',
-            borderRadius: designSystem.borderRadius.xl,
-            borderWidth: 1,
-            borderColor: 'rgba(255, 255, 255, 0.6)',
-            shadowColor: '#000',
-            shadowOffset: { width: 0, height: 2 },
-            shadowOpacity: 0.1,
-            shadowRadius: 4,
-            elevation: 2,
-            flexDirection: 'row',
-            alignItems: 'center',
-            paddingHorizontal: designSystem.spacing.md,
-          }}>
-            <Search size={20} color={designSystem.colors.text.tertiary} />
-            <TextInput
-              style={{
-                flex: 1,
-                paddingVertical: designSystem.spacing.md,
-                paddingHorizontal: designSystem.spacing.sm,
-                fontSize: designSystem.typography.fontSize.base,
-                color: designSystem.colors.text.primary,
-              }}
-              placeholder="Search clients..."
-              placeholderTextColor={designSystem.colors.text.tertiary}
-              value={searchQuery}
-              onChangeText={setSearchQuery}
+          <View style={styles.headerRight}>
+            <Button
+              variant="ghost"
+              size="sm"
+              onPress={handleSettings}
+              style={styles.settingsButton}
+              title="Settings"
+            />
+            <Button
+              variant="primary"
+              size="sm"
+              onPress={handleAddClient}
+              style={styles.addButton}
+              title="Add"
             />
           </View>
         </View>
 
-        {/* Content */}
-        {isLoading ? (
-          <View style={{ flex: 1, padding: designSystem.spacing.md }}>
-            <SkeletonList count={5} cardLines={4} />
-          </View>
-        ) : (
-          <FlatList
-            data={filteredClients}
-            renderItem={renderClientCard}
-            keyExtractor={(item) => item.id}
-            contentContainerStyle={{ padding: designSystem.spacing.md }}
-            showsVerticalScrollIndicator={false}
-            refreshControl={
-              <RefreshControl
-                refreshing={isRefreshing}
-                onRefresh={onRefresh}
-                tintColor={designSystem.colors.primary[500]}
-              />
-            }
-            ListEmptyComponent={
-              <View style={{
-                backgroundColor: 'rgba(255, 255, 255, 0.8)',
-                borderRadius: designSystem.borderRadius.xl,
-                padding: designSystem.spacing.xl,
-                alignItems: 'center',
-                borderWidth: 1,
-                borderColor: 'rgba(255, 255, 255, 0.6)',
-                shadowColor: '#000',
-                shadowOffset: { width: 0, height: 4 },
-                shadowOpacity: 0.1,
-                shadowRadius: 8,
-                elevation: 4,
-              }}>
-                <Users size={48} color={designSystem.colors.gray[400]} />
-                <Text style={{
-                  fontSize: designSystem.typography.fontSize.lg,
-                  fontWeight: designSystem.typography.fontWeight.semibold,
-                  color: designSystem.colors.text.primary,
-                  marginTop: designSystem.spacing.md,
-                  marginBottom: designSystem.spacing.xs,
-                }}>
-                  {searchQuery ? 'No clients found' : 'No clients yet'}
-                </Text>
-                <Text style={{
-                  fontSize: designSystem.typography.fontSize.sm,
-                  color: designSystem.colors.text.secondary,
-                  textAlign: 'center',
-                  marginBottom: designSystem.spacing.lg,
-                }}>
-                  {searchQuery 
-                    ? 'Try adjusting your search terms' 
-                    : 'Get started by adding your first client'
-                  }
-                </Text>
-                <AnimatedButton
-                  title="Add Client"
-                  onPress={() => router.push('/clients/new')}
-                  variant="primary"
-                  icon={<Plus size={16} color="#ffffff" />}
-                />
-              </View>
-            }
+        <View style={styles.filters}>
+          <SearchInput
+            placeholder="Search clients..."
+            onSearch={handleSearch}
+            style={styles.searchInput}
           />
-        )}
+          <View style={styles.statusFilters}>
+            <Button
+              variant={statusFilter === 'all' ? 'primary' : 'outline'}
+              size="sm"
+              onPress={() => setStatusFilter('all')}
+              style={styles.filterButton}
+              title="All"
+            />
+            <Button
+              variant={statusFilter === 'active' ? 'primary' : 'outline'}
+              size="sm"
+              onPress={() => setStatusFilter('active')}
+              style={styles.filterButton}
+              title="Active"
+            />
+            <Button
+              variant={statusFilter === 'inactive' ? 'primary' : 'outline'}
+              size="sm"
+              onPress={() => setStatusFilter('inactive')}
+              style={styles.filterButton}
+              title="Inactive"
+            />
+          </View>
+        </View>
       </View>
-    </SafeAreaView>
+
+      {/* Content */}
+      {isLoading ? (
+        <LoadingSkeleton />
+      ) : clientsData?.length === 0 ? (
+        <EmptyState onAddClient={handleAddClient} />
+      ) : (
+        <ScrollView
+          style={styles.scrollView}
+          contentContainerStyle={styles.listContainer}
+          refreshControl={
+            <RefreshControl
+              refreshing={isLoading}
+              onRefresh={handleRefresh}
+              tintColor={theme.colors.primary}
+            />
+          }
+        >
+          {clientsData?.map((client) => (
+            <ClientCard
+              key={client.id}
+              client={client}
+              onEdit={handleEditClient}
+              onDelete={handleDeleteClient}
+            />
+          ))}
+        </ScrollView>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      <Modal
+        visible={showDeleteModal}
+        onClose={cancelDelete}
+        style={styles.modal}
+      >
+        <ModalHeader>
+          <Text style={[textStyles.h3, styles.modalTitle]}>
+            Delete Client
+          </Text>
+        </ModalHeader>
+        <ModalContent>
+          <Text style={[textStyles.body, styles.modalMessage]}>
+            Are you sure you want to delete &quot;{selectedClient?.name}&quot;? This action cannot be undone.
+          </Text>
+        </ModalContent>
+        <ModalFooter>
+          <Button
+            variant="outline"
+            size="md"
+            onPress={cancelDelete}
+            style={styles.modalButton}
+            title="Cancel"
+          />
+          <Button
+            variant="primary"
+            size="md"
+            onPress={confirmDelete}
+            loading={deleteClientMutation.isPending}
+            style={{ ...styles.modalButton, backgroundColor: theme.colors.error }}
+            title="Delete"
+          />
+        </ModalFooter>
+      </Modal>
+    </View>
   );
 }
+
+// Styles
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: theme.colors.background,
+  },
+  header: {
+    padding: theme.spacing.lg,
+    backgroundColor: theme.colors.surface,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.border,
+  },
+  headerTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: theme.spacing.md,
+  },
+  headerLeft: {
+    flex: 1,
+  },
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.sm,
+  },
+  screenTitle: {
+    color: theme.colors.text.primary,
+    marginBottom: theme.spacing.xs,
+  },
+  clientCount: {
+    color: theme.colors.text.secondary,
+  },
+  settingsButton: {
+    paddingHorizontal: theme.spacing.sm,
+  },
+  addButton: {
+    paddingHorizontal: theme.spacing.sm,
+  },
+  filters: {
+    gap: theme.spacing.md,
+  },
+  searchInput: {
+    marginBottom: 0,
+  },
+  statusFilters: {
+    flexDirection: 'row',
+    gap: theme.spacing.sm,
+  },
+  filterButton: {
+    flex: 1,
+  },
+  scrollView: {
+    flex: 1,
+  },
+  listContainer: {
+    padding: theme.spacing.lg,
+  },
+  clientCard: {
+    marginBottom: theme.spacing.md,
+  },
+  clientHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+  },
+  clientInfo: {
+    flex: 1,
+  },
+  clientNameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.sm,
+    marginBottom: theme.spacing.xs,
+  },
+  clientName: {
+    color: theme.colors.text.primary,
+    flex: 1,
+  },
+  contactName: {
+    color: theme.colors.text.secondary,
+    marginBottom: theme.spacing.xs,
+  },
+  clientEmail: {
+    color: theme.colors.text.secondary,
+    marginBottom: theme.spacing.xs,
+  },
+  clientPhone: {
+    color: theme.colors.text.secondary,
+  },
+  clientActions: {
+    flexDirection: 'row',
+    gap: theme.spacing.xs,
+  },
+  actionButton: {
+    paddingHorizontal: theme.spacing.sm,
+  },
+  emptyState: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: theme.spacing.xl,
+  },
+  emptyTitle: {
+    color: theme.colors.text.primary,
+    marginBottom: theme.spacing.sm,
+    textAlign: 'center',
+  },
+  emptySubtitle: {
+    color: theme.colors.text.secondary,
+    marginBottom: theme.spacing.xl,
+    textAlign: 'center',
+  },
+  emptyButton: {
+    minWidth: 120,
+  },
+  skeletonContainer: {
+    padding: theme.spacing.lg,
+  },
+  skeletonCard: {
+    marginBottom: theme.spacing.md,
+    height: 120,
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: theme.spacing.xl,
+  },
+  errorTitle: {
+    color: theme.colors.text.primary,
+    marginBottom: theme.spacing.sm,
+    textAlign: 'center',
+  },
+  errorMessage: {
+    color: theme.colors.text.secondary,
+    marginBottom: theme.spacing.xl,
+    textAlign: 'center',
+  },
+  errorButton: {
+    minWidth: 120,
+  },
+  modal: {
+    margin: theme.spacing.lg,
+  },
+  modalTitle: {
+    color: theme.colors.text.primary,
+  },
+  modalMessage: {
+    color: theme.colors.text.secondary,
+    lineHeight: 20,
+  },
+  modalButton: {
+    flex: 1,
+    marginHorizontal: theme.spacing.xs,
+  },
+});

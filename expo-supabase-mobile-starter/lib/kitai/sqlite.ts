@@ -1,4 +1,5 @@
 import { getDatabase } from '../sqlite';
+import * as SQLite from 'expo-sqlite';
 
 export interface OfflineSearchIndex {
   id: string;
@@ -14,13 +15,13 @@ export interface SearchIndexEntry {
   entityType: string;
   entityId: string;
   searchText: string;
-  metadata: any;
+  metadata: Record<string, unknown>;
   relevance: number;
 }
 
 export class KitAISQLite {
   private static instance: KitAISQLite;
-  private db: any = null;
+  private db: SQLite.SQLiteDatabase | null = null;
 
   static getInstance(): KitAISQLite {
     if (!KitAISQLite.instance) {
@@ -46,6 +47,10 @@ export class KitAISQLite {
    * Create the search index table
    */
   private async createSearchIndexTable(): Promise<void> {
+    if (!this.db) {
+      throw new Error('Database not initialized');
+    }
+    
     const createTableSQL = `
       CREATE TABLE IF NOT EXISTS kitai_search_index (
         id TEXT PRIMARY KEY,
@@ -68,7 +73,7 @@ export class KitAISQLite {
   /**
    * Index a client for search
    */
-  async indexClient(client: any): Promise<void> {
+  async indexClient(client: Record<string, unknown>): Promise<void> {
     try {
       const searchText = `${client.name} ${client.email} ${client.phone} ${client.company || ''}`.toLowerCase();
       const metadata = JSON.stringify({
@@ -82,7 +87,7 @@ export class KitAISQLite {
       await this.upsertSearchIndex({
         id: `client_${client.id}`,
         entityType: 'client',
-        entityId: client.id,
+        entityId: String(client.id),
         searchText,
         metadata,
         lastUpdated: new Date().toISOString(),
@@ -95,7 +100,7 @@ export class KitAISQLite {
   /**
    * Index a pricebook item for search
    */
-  async indexPricebookItem(item: any): Promise<void> {
+  async indexPricebookItem(item: Record<string, unknown>): Promise<void> {
     try {
       const searchText = `${item.name} ${item.code} ${item.category} ${item.description || ''}`.toLowerCase();
       const metadata = JSON.stringify({
@@ -111,7 +116,7 @@ export class KitAISQLite {
       await this.upsertSearchIndex({
         id: `pricebook_${item.id}`,
         entityType: 'pricebook',
-        entityId: item.id,
+        entityId: String(item.id),
         searchText,
         metadata,
         lastUpdated: new Date().toISOString(),
@@ -124,12 +129,13 @@ export class KitAISQLite {
   /**
    * Index a quote for search
    */
-  async indexQuote(quote: any): Promise<void> {
+  async indexQuote(quote: Record<string, unknown>): Promise<void> {
     try {
-      const searchText = `${quote.number} ${quote.clients?.name || ''} ${quote.status}`.toLowerCase();
+      const clients = quote.clients as Record<string, unknown> | undefined;
+      const searchText = `${quote.number} ${clients?.name || ''} ${quote.status}`.toLowerCase();
       const metadata = JSON.stringify({
         number: quote.number,
-        clientName: quote.clients?.name,
+        clientName: clients?.name,
         status: quote.status,
         total: quote.total,
         currency: quote.currency,
@@ -138,7 +144,7 @@ export class KitAISQLite {
       await this.upsertSearchIndex({
         id: `quote_${quote.id}`,
         entityType: 'quote',
-        entityId: quote.id,
+        entityId: String(quote.id),
         searchText,
         metadata,
         lastUpdated: new Date().toISOString(),
@@ -151,12 +157,13 @@ export class KitAISQLite {
   /**
    * Index an invoice for search
    */
-  async indexInvoice(invoice: any): Promise<void> {
+  async indexInvoice(invoice: Record<string, unknown>): Promise<void> {
     try {
-      const searchText = `${invoice.number} ${invoice.clients?.name || ''} ${invoice.status}`.toLowerCase();
+      const clients = invoice.clients as Record<string, unknown> | undefined;
+      const searchText = `${invoice.number} ${clients?.name || ''} ${invoice.status}`.toLowerCase();
       const metadata = JSON.stringify({
         number: invoice.number,
-        clientName: invoice.clients?.name,
+        clientName: clients?.name,
         status: invoice.status,
         total: invoice.total,
         balanceDue: invoice.balance_due,
@@ -165,7 +172,7 @@ export class KitAISQLite {
 
       await this.upsertSearchIndex({
         id: `invoice_${invoice.id}`,
-        entityId: invoice.id,
+        entityId: String(invoice.id),
         entityType: 'invoice',
         searchText,
         metadata,
@@ -181,6 +188,10 @@ export class KitAISQLite {
    */
   async search(query: string, entityTypes?: string[]): Promise<SearchIndexEntry[]> {
     try {
+      if (!this.db) {
+        throw new Error('Database not initialized');
+      }
+      
       const lowerQuery = query.toLowerCase();
       const queryWords = lowerQuery.split(/\s+/).filter(word => word.length > 0);
       
@@ -190,7 +201,7 @@ export class KitAISQLite {
         WHERE 1=1
       `;
       
-      const params: any[] = [];
+      const params: SQLite.SQLiteBindValue[] = [];
       
       // Filter by entity types if specified
       if (entityTypes && entityTypes.length > 0) {
@@ -199,26 +210,29 @@ export class KitAISQLite {
         params.push(...entityTypes);
       }
       
-      // Add search conditions
-      const searchConditions = queryWords.map(() => 'search_text LIKE ?');
-      sql += ` AND (${searchConditions.join(' AND ')})`;
-      params.push(...queryWords.map(word => `%${word}%`));
+      // Add search conditions for each word
+      queryWords.forEach((word, index) => {
+        sql += ` AND search_text LIKE ?`;
+        params.push(`%${word}%`);
+      });
       
-      sql += ` ORDER BY last_updated DESC LIMIT 20`;
+      sql += ` ORDER BY last_updated DESC LIMIT 50`;
       
-      const results = await this.db.getAllAsync(sql, params);
+      const results = await this.db.getAllAsync(sql, ...params);
       
-      return results.map((row: any) => ({
-        id: row.id,
-        entityType: row.entity_type,
-        entityId: row.entity_id,
-        searchText: row.search_text,
-        metadata: JSON.parse(row.metadata || '{}'),
-        relevance: this.calculateRelevance(lowerQuery, row.search_text),
-      })).sort((a: SearchIndexEntry, b: SearchIndexEntry) => b.relevance - a.relevance);
-      
+      return results.map((row: unknown) => {
+        const typedRow = row as Record<string, unknown>;
+        return {
+          id: String(typedRow.id),
+          entityType: String(typedRow.entity_type),
+          entityId: String(typedRow.entity_id),
+          searchText: String(typedRow.search_text),
+          metadata: JSON.parse(String(typedRow.metadata || '{}')),
+          relevance: this.calculateRelevance(lowerQuery, String(typedRow.search_text)),
+        };
+      });
     } catch (error) {
-      console.error('Failed to search offline index:', error);
+      console.error('Search failed:', error);
       return [];
     }
   }
@@ -255,67 +269,60 @@ export class KitAISQLite {
    * Remove an entity from the search index
    */
   async removeFromIndex(entityType: string, entityId: string): Promise<void> {
-    try {
-      const indexId = `${entityType}_${entityId}`;
-      await this.db.runAsync(
-        'DELETE FROM kitai_search_index WHERE id = ?',
-        [indexId]
-      );
-    } catch (error) {
-      console.error('Failed to remove from search index:', error);
+    if (!this.db) {
+      throw new Error('Database not initialized');
     }
+    
+    const sql = 'DELETE FROM kitai_search_index WHERE entity_type = ? AND entity_id = ?';
+    await this.db.runAsync(sql, entityType, entityId);
   }
 
   /**
-   * Clear all search indexes
+   * Clear all search index data
    */
   async clearIndex(): Promise<void> {
-    try {
-      await this.db.runAsync('DELETE FROM kitai_search_index');
-    } catch (error) {
-      console.error('Failed to clear search index:', error);
+    if (!this.db) {
+      throw new Error('Database not initialized');
     }
+    
+    await this.db.runAsync('DELETE FROM kitai_search_index');
   }
 
   /**
-   * Get index statistics
+   * Get search index statistics
    */
   async getIndexStats(): Promise<{
-    totalEntries: number;
+    total: number;
     byType: Record<string, number>;
-    lastUpdated: string;
+    lastUpdated: string | null;
   }> {
-    try {
-      const totalResult = await this.db.getFirstAsync(
-        'SELECT COUNT(*) as count FROM kitai_search_index'
-      );
-      
-      const typeResults = await this.db.getAllAsync(
-        'SELECT entity_type, COUNT(*) as count FROM kitai_search_index GROUP BY entity_type'
-      );
-      
-      const lastUpdatedResult = await this.db.getFirstAsync(
-        'SELECT MAX(last_updated) as last_updated FROM kitai_search_index'
-      );
-      
-      const byType: Record<string, number> = {};
-      typeResults.forEach((row: any) => {
-        byType[row.entity_type] = row.count;
-      });
-      
-      return {
-        totalEntries: totalResult?.count || 0,
-        byType,
-        lastUpdated: lastUpdatedResult?.last_updated || '',
-      };
-    } catch (error) {
-      console.error('Failed to get index stats:', error);
-      return {
-        totalEntries: 0,
-        byType: {},
-        lastUpdated: '',
-      };
+    if (!this.db) {
+      throw new Error('Database not initialized');
     }
+    
+    const totalResult = await this.db.getFirstAsync(
+      'SELECT COUNT(*) as count FROM kitai_search_index'
+    );
+    
+         const typeResults = await this.db.getAllAsync(
+       'SELECT entity_type, COUNT(*) as count FROM kitai_search_index GROUP BY entity_type'
+     );
+     
+     const lastUpdatedResult = await this.db.getFirstAsync(
+       'SELECT MAX(last_updated) as last_updated FROM kitai_search_index'
+     );
+     
+     const byType: Record<string, number> = {};
+     typeResults.forEach((row: unknown) => {
+       const typedRow = row as Record<string, unknown>;
+       byType[String(typedRow.entity_type)] = Number(typedRow.count);
+     });
+     
+     return {
+       total: Number((totalResult as Record<string, unknown>)?.count || 0),
+       byType,
+       lastUpdated: (lastUpdatedResult as Record<string, unknown>)?.last_updated ? String((lastUpdatedResult as Record<string, unknown>).last_updated) : null,
+     };
   }
 
   /**
@@ -323,8 +330,12 @@ export class KitAISQLite {
    */
   async bulkIndex(entities: Array<{
     type: 'client' | 'pricebook' | 'quote' | 'invoice';
-    data: any;
+    data: Record<string, unknown>;
   }>): Promise<void> {
+    if (!this.db) {
+      throw new Error('Database not initialized');
+    }
+    
     try {
       await this.db.execAsync('BEGIN TRANSACTION');
       
@@ -348,7 +359,6 @@ export class KitAISQLite {
       await this.db.execAsync('COMMIT');
     } catch (error) {
       await this.db.execAsync('ROLLBACK');
-      console.error('Failed to bulk index entities:', error);
       throw error;
     }
   }
@@ -357,6 +367,10 @@ export class KitAISQLite {
    * Clean up old entries
    */
   async cleanupOldEntries(daysOld: number = 30): Promise<number> {
+    if (!this.db) {
+      throw new Error('Database not initialized');
+    }
+    
     try {
       const cutoffDate = new Date();
       cutoffDate.setDate(cutoffDate.getDate() - daysOld);
@@ -373,34 +387,75 @@ export class KitAISQLite {
     }
   }
 
-  // Private helper methods
+  /**
+   * Calculate relevance score for search results
+   */
+  private calculateRelevance(query: string, searchText: string): number {
+    const queryWords = query.toLowerCase().split(/\s+/).filter(word => word.length > 0);
+    const searchWords = searchText.toLowerCase().split(/\s+/).filter(word => word.length > 0);
+    
+    let score = 0;
+    
+    queryWords.forEach(queryWord => {
+      searchWords.forEach(searchWord => {
+        if (searchWord.includes(queryWord)) {
+          score += 1;
+        }
+        if (searchWord === queryWord) {
+          score += 2; // Exact match gets higher score
+        }
+      });
+    });
+    
+    return score;
+  }
 
+  /**
+   * Upsert search index entry
+   */
   private async upsertSearchIndex(entry: OfflineSearchIndex): Promise<void> {
+    if (!this.db) {
+      throw new Error('Database not initialized');
+    }
+    
+    const sql = `
+      INSERT OR REPLACE INTO kitai_search_index 
+      (id, entity_type, entity_id, search_text, metadata, last_updated)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `;
+    
     await this.db.runAsync(
-      `INSERT OR REPLACE INTO kitai_search_index 
-       (id, entity_type, entity_id, search_text, metadata, last_updated)
-       VALUES (?, ?, ?, ?, ?, ?)`,
-      [entry.id, entry.entityType, entry.entityId, entry.searchText, entry.metadata, entry.lastUpdated]
+      sql,
+      entry.id,
+      entry.entityType,
+      entry.entityId,
+      entry.searchText,
+      entry.metadata,
+      entry.lastUpdated
     );
   }
 
-  private calculateRelevance(query: string, searchText: string): number {
-    const queryWords = query.split(/\s+/);
-    const searchWords = searchText.split(/\s+/);
+  /**
+   * Update entity in search index
+   */
+  async updateIndex(entityType: string, entityId: string, data: Record<string, unknown>): Promise<void> {
+    // Remove old entry and add new one
+    await this.removeFromIndex(entityType, entityId);
     
-    let relevance = 0;
-    
-    for (const queryWord of queryWords) {
-      for (const searchWord of searchWords) {
-        if (searchWord.startsWith(queryWord)) {
-          relevance += 10;
-        } else if (searchWord.includes(queryWord)) {
-          relevance += 5;
-        }
-      }
+    switch (entityType) {
+      case 'client':
+        await this.indexClient(data);
+        break;
+      case 'pricebook':
+        await this.indexPricebookItem(data);
+        break;
+      case 'quote':
+        await this.indexQuote(data);
+        break;
+      case 'invoice':
+        await this.indexInvoice(data);
+        break;
     }
-    
-    return relevance;
   }
 }
 

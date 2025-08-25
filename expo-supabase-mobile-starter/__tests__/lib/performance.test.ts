@@ -3,7 +3,7 @@ import {
   PERFORMANCE_CONSTANTS,
   type PaginationOptions,
   type QueryOptions,
-  type PaginatedResult
+  // type PaginatedResult // unused
 } from '../../lib/performance'
 
 // Mock Supabase client
@@ -38,8 +38,8 @@ describe('Performance Optimization', () => {
           limit: jest.fn().mockReturnThis()
         }
         
-        const options: PaginationOptions = { page: 2, limit: 25 }
-        const result = PerformanceOptimizer.applyPagination(mockQuery, options)
+        const options: PaginationOptions = { page: 2, limit: 25, offset: 25 }
+        PerformanceOptimizer.applyPagination(mockQuery, options)
         
         expect(mockQuery.range).toHaveBeenCalledWith(25, 49)
         expect(mockQuery.limit).toHaveBeenCalledWith(25)
@@ -64,11 +64,11 @@ describe('Performance Optimization', () => {
         }
         
         // Test minimum limit
-        PerformanceOptimizer.applyPagination(mockQuery, { page: 1, limit: 0 })
+        PerformanceOptimizer.applyPagination(mockQuery, { page: 1, limit: 0, offset: 0 })
         expect(mockQuery.limit).toHaveBeenCalledWith(1)
         
         // Test maximum limit
-        PerformanceOptimizer.applyPagination(mockQuery, { page: 1, limit: 1000 })
+        PerformanceOptimizer.applyPagination(mockQuery, { page: 1, limit: 1000, offset: 0 })
         expect(mockQuery.limit).toHaveBeenCalledWith(200)
       })
     })
@@ -117,7 +117,7 @@ describe('Performance Optimization', () => {
           order: jest.fn().mockReturnThis()
         }
         
-        const sort = { field: 'created_at', direction: 'desc' as const }
+        const sort = { created_at: 'desc' as const }
         PerformanceOptimizer.applySorting(mockQuery, sort)
         
         expect(mockQuery.order).toHaveBeenCalledWith('created_at', { ascending: false })
@@ -228,8 +228,8 @@ describe('Performance Optimization', () => {
         
         expect(processor).toHaveBeenCalledTimes(100)
         expect(results).toHaveLength(100)
-        expect(results[0].processed).toBe(true)
-        expect(results[99].processed).toBe(true)
+        expect((results[0] as Record<string, unknown>).processed).toBe(true)
+        expect((results[99] as Record<string, unknown>).processed).toBe(true)
       })
 
       it('should handle empty dataset', async () => {
@@ -243,10 +243,10 @@ describe('Performance Optimization', () => {
 
     describe('cursorPaginatedQuery', () => {
       it('should handle cursor-based pagination', async () => {
-        const mockData = Array.from({ length: 11 }, (_, i) => ({ 
-          id: i, 
-          created_at: new Date(Date.now() - i * 1000).toISOString() 
-        }))
+        // const mockData = Array.from({ length: 11 }, (_, i) => ({ // unused
+        //   id: i, 
+        //   created_at: new Date(Date.now() - i * 1000).toISOString() 
+        // }))
         
         const mockQuery = {
           select: jest.fn().mockReturnThis(),
@@ -257,15 +257,15 @@ describe('Performance Optimization', () => {
         }
         
         // Mock the supabase client
-        const mockSupabaseClient = {
-          from: jest.fn(() => mockQuery)
-        }
+        // const mockSupabaseClient = { // unused
+        //   from: jest.fn(() => mockQuery)
+        // }
         
         // This would need to be properly mocked in a real test
-        const result = await PerformanceOptimizer.cursorPaginatedQuery('test_table', {
-          orgId: 'test-org',
+        await PerformanceOptimizer.cursorPaginatedQuery('test_table', {
+          filters: { org_id: 'test-org' },
           limit: 10,
-          sortField: 'created_at'
+          sort: { created_at: 'desc' }
         })
         
         // Verify the query structure
@@ -286,13 +286,13 @@ describe('Performance Optimization', () => {
           limit: jest.fn().mockReturnThis()
         }
         
-        const mockSupabaseClient = {
-          from: jest.fn(() => mockQuery)
-        }
+        // const mockSupabaseClient = { // unused
+        //   from: jest.fn(() => mockQuery)
+        // }
         
-        const result = await PerformanceOptimizer.optimizedSearch('test_table', 'search_term', ['name', 'description'], {
-          pagination: { page: 1, limit: 20 }
-        }, 'test-org')
+        await PerformanceOptimizer.optimizedSearch('test_table', 'search_term', ['name', 'description'], {
+          limit: 20
+        })
         
         expect(mockQuery.select).toHaveBeenCalledWith('*')
         expect(mockQuery.eq).toHaveBeenCalledWith('org_id', 'test-org')
@@ -324,17 +324,16 @@ describe('Performance Optimization', () => {
       }
       
       const options: QueryOptions = {
-        pagination: { page: 2, limit: 25 },
+        pagination: { page: 2, limit: 25, offset: 25 },
         filters: { status: 'active', category: ['electronics'] },
-        sort: { field: 'created_at', direction: 'desc' },
-        select: ['id', 'name', 'status']
+        sort: { created_at: 'desc' }
       }
       
       // Apply all optimizations
-      let query = mockQuery
-      query = PerformanceOptimizer.applyFilters(query, options.filters || {})
-      query = PerformanceOptimizer.applySorting(query, options.sort)
-      query = PerformanceOptimizer.applyPagination(query, options.pagination!)
+      // let query = mockQuery // unused
+      PerformanceOptimizer.applyFilters(mockQuery, options.filters || {})
+      PerformanceOptimizer.applySorting(mockQuery, options.sort)
+      PerformanceOptimizer.applyPagination(mockQuery, options.pagination!)
       
       expect(mockQuery.eq).toHaveBeenCalledWith('status', 'active')
       expect(mockQuery.in).toHaveBeenCalledWith('category', ['electronics'])
@@ -362,5 +361,7 @@ describe('Performance Optimization', () => {
       expect(processor).toHaveBeenCalledTimes(1000)
       expect(endTime - startTime).toBeLessThan(5000) // Should complete within 5 seconds
     })
+
+    
   })
 })

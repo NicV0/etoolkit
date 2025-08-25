@@ -1,545 +1,543 @@
-import React, { useState } from 'react';
-import { View, Text, ScrollView, Pressable } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import React, { useState, useCallback } from 'react';
+import {
+  View,
+  ScrollView,
+  RefreshControl,
+  StyleSheet,
+  Text,
+  Alert,
+} from 'react-native';
 import { router } from 'expo-router';
-import { 
-  Receipt, 
-  FileText, 
-  DollarSign,
-  Plus,
-  ChevronRight,
-  Calendar,
-  Clock,
-  CheckCircle,
-  AlertCircle,
-  XCircle,
-  Settings
-} from 'lucide-react-native';
-import { designSystem } from '../../../theme/design-system';
+import { FileText, Calendar } from 'lucide-react-native';
 
-export default function BillingScreen() {
-  const [activeTab, setActiveTab] = useState<'quotes' | 'invoices'>('quotes');
+// Components
+import {
+  Card,
+  Button,
+  Badge,
+  SearchInput,
+  SkeletonCard,
+  Modal,
+  ModalHeader,
+  ModalContent,
+  ModalFooter,
+} from '../../../components/ui';
 
-  // Mock data - keeping all existing functionality
-  const quotes = [
-    {
-      id: '1',
-      number: 'Q-0001',
-      clientName: 'Acme Plumbing',
-      amount: 2500,
-      status: 'sent',
-      date: '2024-01-15',
-      dueDate: '2024-02-15',
-    },
-    {
-      id: '2',
-      number: 'Q-0002',
-      clientName: 'Green Leaf HVAC',
-      amount: 1800,
-      status: 'draft',
-      date: '2024-01-14',
-      dueDate: null,
-    },
-    {
-      id: '3',
-      number: 'Q-0003',
-      clientName: 'Sunny Electrical',
-      amount: 3200,
-      status: 'accepted',
-      date: '2024-01-13',
-      dueDate: '2024-02-13',
-    },
-  ];
+// Hooks
+import {
+  useInvoices,
+  useDeleteInvoice,
+} from '../../../lib/query/hooks';
 
-  const invoices = [
-    {
-      id: '1',
-      number: 'INV-0001',
-      clientName: 'Acme Plumbing',
-      amount: 2500,
-      paid: 1500,
-      status: 'partial',
-      date: '2024-01-10',
-      dueDate: '2024-02-10',
-    },
-    {
-      id: '2',
-      number: 'INV-0002',
-      clientName: 'Green Leaf HVAC',
-      amount: 1800,
-      paid: 1800,
-      status: 'paid',
-      date: '2024-01-08',
-      dueDate: '2024-02-08',
-    },
-    {
-      id: '3',
-      number: 'INV-0003',
-      clientName: 'Sunny Electrical',
-      amount: 3200,
-      paid: 0,
-      status: 'overdue',
-      date: '2024-01-05',
-      dueDate: '2024-02-05',
-    },
-  ];
+// Theme
+import { theme } from '../../../lib/theme/tokens';
+import { textStyles } from '../../../lib/theme/utils';
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-    }).format(amount);
-  };
+// Types
+import { InvoiceWithItems } from '../../../lib/api/invoices';
+import { InvoiceFilters } from '../../../lib/database/types';
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-    });
-  };
+type Invoice = InvoiceWithItems;
+
+// Utils
+import { formatCurrencySafe } from '../../../lib/utils/number';
+
+// Invoice card component
+const InvoiceCard: React.FC<{
+  invoice: Invoice;
+  onEdit: (invoice: Invoice) => void;
+  onDelete: (invoice: Invoice) => void;
+}> = ({ invoice, onEdit, onDelete }) => {
+  const handleEdit = useCallback(() => {
+    onEdit(invoice);
+  }, [invoice, onEdit]);
+
+  const handleDelete = useCallback(() => {
+    onDelete(invoice);
+  }, [invoice, onDelete]);
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'sent':
-      case 'partial':
-        return designSystem.colors.warning[500];
-      case 'accepted':
       case 'paid':
-        return designSystem.colors.success[500];
-      case 'draft':
-        return designSystem.colors.gray[500];
+        return 'success';
+      case 'sent':
+        return 'info';
       case 'overdue':
-        return designSystem.colors.error[500];
+        return 'error';
+      case 'draft':
+        return 'warning';
       default:
-        return designSystem.colors.gray[500];
+        return 'info';
     }
   };
 
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'sent':
-      case 'partial':
-        return <Clock size={16} color={designSystem.colors.warning[500]} />;
-      case 'accepted':
-      case 'paid':
-        return <CheckCircle size={16} color={designSystem.colors.success[500]} />;
-      case 'draft':
-        return <FileText size={16} color={designSystem.colors.gray[500]} />;
-      case 'overdue':
-        return <AlertCircle size={16} color={designSystem.colors.error[500]} />;
-      default:
-        return <FileText size={16} color={designSystem.colors.gray[500]} />;
-    }
+  const formatCurrency = (amount: number) => {
+    return formatCurrencySafe(amount, invoice.currency || 'USD');
   };
 
-  const renderQuoteCard = (quote: typeof quotes[0]) => (
-    <Pressable
-      key={quote.id}
-      onPress={() => router.push(`/billing/quotes/${quote.id}`)}
-      style={{
-        backgroundColor: 'rgba(255, 255, 255, 0.8)',
-        borderRadius: designSystem.borderRadius.xl,
-        padding: designSystem.spacing.lg,
-        marginBottom: designSystem.spacing.sm,
-        borderWidth: 1,
-        borderColor: 'rgba(255, 255, 255, 0.6)',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.1,
-        shadowRadius: 8,
-        elevation: 4,
-      }}
-    >
-      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
-          <View style={{
-            width: 48,
-            height: 48,
-            borderRadius: designSystem.borderRadius.lg,
-            backgroundColor: designSystem.colors.primary[50],
-            alignItems: 'center',
-            justifyContent: 'center',
-            marginRight: designSystem.spacing.md,
-          }}>
-            <FileText size={24} color={designSystem.colors.primary[500]} />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={{
-              fontSize: designSystem.typography.fontSize.base,
-              fontWeight: designSystem.typography.fontWeight.semibold,
-              color: designSystem.colors.text.primary,
-              marginBottom: designSystem.spacing.xs,
-            }}>
-              {quote.number}
-            </Text>
-            <Text style={{
-              fontSize: designSystem.typography.fontSize.sm,
-              color: designSystem.colors.text.secondary,
-              marginBottom: designSystem.spacing.xs,
-            }}>
-              {quote.clientName}
-            </Text>
-            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-              <Calendar size={12} color={designSystem.colors.text.tertiary} />
-              <Text style={{
-                fontSize: designSystem.typography.fontSize.xs,
-                color: designSystem.colors.text.tertiary,
-                marginLeft: designSystem.spacing.xs,
-              }}>
-                {formatDate(quote.date)}
-              </Text>
-            </View>
-          </View>
-        </View>
-        <View style={{ alignItems: 'flex-end' }}>
-          <View style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            backgroundColor: `${getStatusColor(quote.status)}20`,
-            paddingHorizontal: designSystem.spacing.sm,
-            paddingVertical: designSystem.spacing.xs,
-            borderRadius: designSystem.borderRadius.full,
-            marginBottom: designSystem.spacing.xs,
-          }}>
-            {getStatusIcon(quote.status)}
-            <Text style={{
-              fontSize: designSystem.typography.fontSize.xs,
-              fontWeight: designSystem.typography.fontWeight.medium,
-              color: getStatusColor(quote.status),
-              marginLeft: designSystem.spacing.xs,
-              textTransform: 'uppercase',
-            }}>
-              {quote.status}
-            </Text>
-          </View>
-          <Text style={{
-            fontSize: designSystem.typography.fontSize.base,
-            fontWeight: designSystem.typography.fontWeight.semibold,
-            color: designSystem.colors.text.primary,
-          }}>
-            {formatCurrency(quote.amount)}
-          </Text>
-          <ChevronRight size={16} color={designSystem.colors.gray[400]} />
-        </View>
-      </View>
-    </Pressable>
-  );
-
-  const renderInvoiceCard = (invoice: typeof invoices[0]) => (
-    <Pressable
-      key={invoice.id}
-      onPress={() => router.push(`/billing/invoices/${invoice.id}`)}
-      style={{
-        backgroundColor: 'rgba(255, 255, 255, 0.8)',
-        borderRadius: designSystem.borderRadius.xl,
-        padding: designSystem.spacing.lg,
-        marginBottom: designSystem.spacing.sm,
-        borderWidth: 1,
-        borderColor: 'rgba(255, 255, 255, 0.6)',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.1,
-        shadowRadius: 8,
-        elevation: 4,
-      }}
-    >
-      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
-          <View style={{
-            width: 48,
-            height: 48,
-            borderRadius: designSystem.borderRadius.lg,
-            backgroundColor: designSystem.colors.success[50],
-            alignItems: 'center',
-            justifyContent: 'center',
-            marginRight: designSystem.spacing.md,
-          }}>
-                         <Receipt size={24} color={designSystem.colors.success[500]} />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={{
-              fontSize: designSystem.typography.fontSize.base,
-              fontWeight: designSystem.typography.fontWeight.semibold,
-              color: designSystem.colors.text.primary,
-              marginBottom: designSystem.spacing.xs,
-            }}>
-              {invoice.number}
-            </Text>
-            <Text style={{
-              fontSize: designSystem.typography.fontSize.sm,
-              color: designSystem.colors.text.secondary,
-              marginBottom: designSystem.spacing.xs,
-            }}>
-              {invoice.clientName}
-            </Text>
-            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-              <Calendar size={12} color={designSystem.colors.text.tertiary} />
-              <Text style={{
-                fontSize: designSystem.typography.fontSize.xs,
-                color: designSystem.colors.text.tertiary,
-                marginLeft: designSystem.spacing.xs,
-              }}>
-                {formatDate(invoice.date)}
-              </Text>
-            </View>
-          </View>
-        </View>
-        <View style={{ alignItems: 'flex-end' }}>
-          <View style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            backgroundColor: `${getStatusColor(invoice.status)}20`,
-            paddingHorizontal: designSystem.spacing.sm,
-            paddingVertical: designSystem.spacing.xs,
-            borderRadius: designSystem.borderRadius.full,
-            marginBottom: designSystem.spacing.xs,
-          }}>
-            {getStatusIcon(invoice.status)}
-            <Text style={{
-              fontSize: designSystem.typography.fontSize.xs,
-              fontWeight: designSystem.typography.fontWeight.medium,
-              color: getStatusColor(invoice.status),
-              marginLeft: designSystem.spacing.xs,
-              textTransform: 'uppercase',
-            }}>
-              {invoice.status}
-            </Text>
-          </View>
-          <Text style={{
-            fontSize: designSystem.typography.fontSize.base,
-            fontWeight: designSystem.typography.fontWeight.semibold,
-            color: designSystem.colors.text.primary,
-          }}>
-            {formatCurrency(invoice.amount)}
-          </Text>
-          {invoice.paid > 0 && (
-            <Text style={{
-              fontSize: designSystem.typography.fontSize.xs,
-              color: designSystem.colors.success[500],
-            }}>
-              Paid: {formatCurrency(invoice.paid)}
-            </Text>
-          )}
-          <ChevronRight size={16} color={designSystem.colors.gray[400]} />
-        </View>
-      </View>
-    </Pressable>
-  );
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString();
+  };
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: '#f5f7fb' }}>
-      <View style={{ flex: 1 }}>
-        {/* Header */}
-        <View style={{ 
-          padding: designSystem.spacing.md,
-          paddingBottom: designSystem.spacing.sm,
-        }}>
-                    <View style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            marginBottom: designSystem.spacing.md,
-          }}>
-            <Text style={{
-              fontSize: designSystem.typography.fontSize['3xl'],
-              fontWeight: designSystem.typography.fontWeight.bold,
-              color: designSystem.colors.text.primary,
-            }}>
+    <Card variant="elevated" style={styles.invoiceCard}>
+      <View style={styles.invoiceHeader}>
+        <View style={styles.invoiceInfo}>
+          <View style={styles.invoiceNumberRow}>
+            <Text style={[textStyles.h3, styles.invoiceNumber]}>
+              #{invoice.number}
+            </Text>
+            <Badge variant={getStatusColor(invoice.status) as 'success' | 'info' | 'error' | 'warning'}>
+              {invoice.status}
+            </Badge>
+          </View>
+          <Text style={[textStyles.body, styles.invoiceAmount]}>
+            {formatCurrency(invoice.total)}
+          </Text>
+          {invoice.due_date && (
+            <View style={styles.dueDateRow}>
+              <Calendar size={14} color={theme.colors.text.secondary} />
+              <Text style={[textStyles.caption, styles.dueDate]}>
+                Due: {formatDate(invoice.due_date)}
+              </Text>
+            </View>
+          )}
+        </View>
+        <View style={styles.invoiceActions}>
+          <Button
+            variant="ghost"
+            size="sm"
+            onPress={handleEdit}
+            style={styles.actionButton}
+            title="Edit"
+          />
+          <Button
+            variant="ghost"
+            size="sm"
+            onPress={handleDelete}
+            style={styles.actionButton}
+            title="Delete"
+          />
+        </View>
+      </View>
+    </Card>
+  );
+};
+
+// Empty state component
+const EmptyState: React.FC<{ onAddInvoice: () => void }> = ({ onAddInvoice }) => (
+  <View style={styles.emptyState}>
+    <View style={styles.emptyIcon}>
+      <FileText size={48} color={theme.colors.text.secondary} />
+    </View>
+    <Text style={[textStyles.h2, styles.emptyTitle]}>
+      No invoices yet
+    </Text>
+    <Text style={[textStyles.body, styles.emptySubtitle]}>
+      Get started by creating your first invoice
+    </Text>
+    <Button
+      variant="primary"
+      size="lg"
+      onPress={onAddInvoice}
+      style={styles.emptyButton}
+      title="Create Invoice"
+    />
+  </View>
+);
+
+// Loading skeleton component
+const LoadingSkeleton: React.FC = () => (
+  <View style={styles.skeletonContainer}>
+    {Array.from({ length: 5 }).map((_, index) => (
+      <SkeletonCard key={index} style={styles.skeletonCard} />
+    ))}
+  </View>
+);
+
+// Main Billing screen
+export default function BillingScreen() {
+  // State
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'draft' | 'sent' | 'paid' | 'overdue'>('all');
+  const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+
+  // Query hooks
+  const filters: InvoiceFilters = {
+    search: searchQuery || undefined,
+    status: statusFilter === 'all' ? undefined : statusFilter,
+  };
+
+  // Convert filters to match the expected type
+  const apiFilters = {
+    ...filters,
+    client_id: filters.client_id?.toString()
+  };
+
+  const {
+    data: invoicesData,
+    isLoading,
+    isError,
+    error,
+    refetch,
+  } = useInvoices('org-id', apiFilters);
+
+  const deleteInvoiceMutation = useDeleteInvoice();
+
+  // Handlers
+  const handleSearch = useCallback((query: string) => {
+    setSearchQuery(query);
+  }, []);
+
+  const handleRefresh = useCallback(async () => {
+    await refetch();
+  }, [refetch]);
+
+  const handleAddInvoice = useCallback(() => {
+    router.push('/billing/new');
+  }, []);
+
+  const handleEditInvoice = useCallback((invoice: Invoice) => {
+    router.push(`/billing/${invoice.id}`);
+  }, []);
+
+  const handleDeleteInvoice = useCallback((invoice: Invoice) => {
+    setSelectedInvoice(invoice);
+    setShowDeleteModal(true);
+  }, []);
+
+  const confirmDelete = useCallback(async () => {
+    if (!selectedInvoice) return;
+
+    try {
+      await deleteInvoiceMutation.mutateAsync(selectedInvoice.id.toString());
+      setShowDeleteModal(false);
+      setSelectedInvoice(null);
+    } catch (error) {
+      Alert.alert('Error', 'Failed to delete invoice. Please try again.');
+    }
+  }, [selectedInvoice, deleteInvoiceMutation]);
+
+  // const _cancelDelete = useCallback(() => {
+  //   setShowDeleteModal(false);
+  //   setSelectedInvoice(null);
+  // }, []);
+
+
+
+  // Error state
+  if (isError) {
+    return (
+      <View style={styles.errorContainer}>
+        <Text style={[textStyles.h2, styles.errorTitle]}>
+          Something went wrong
+        </Text>
+        <Text style={[textStyles.body, styles.errorMessage]}>
+          {error?.message || 'Failed to load invoices'}
+        </Text>
+        <Button
+          variant="primary"
+          size="lg"
+          onPress={handleRefresh}
+          style={styles.errorButton}
+          title="Try Again"
+        />
+      </View>
+    );
+  }
+
+  return (
+    <View style={styles.container}>
+      {/* Header */}
+      <View style={styles.header}>
+        <View style={styles.headerTop}>
+          <View style={styles.headerLeft}>
+            <Text style={[textStyles.h2, styles.screenTitle]}>
               Billing
             </Text>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: designSystem.spacing.sm }}>
-              <Pressable
-                onPress={() => router.push('/settings')}
-                style={{
-                  backgroundColor: 'rgba(255, 255, 255, 0.8)',
-                  borderRadius: designSystem.borderRadius.lg,
-                  padding: designSystem.spacing.sm,
-                  borderWidth: 1,
-                  borderColor: 'rgba(255, 255, 255, 0.6)',
-                  shadowColor: '#000',
-                  shadowOffset: { width: 0, height: 2 },
-                  shadowOpacity: 0.1,
-                  shadowRadius: 4,
-                  elevation: 2,
-                }}
-              >
-                <Settings size={20} color={designSystem.colors.text.secondary} />
-              </Pressable>
-              <Pressable
-                onPress={() => router.push(activeTab === 'quotes' ? '/billing/quotes/new' : '/billing/invoices/new')}
-                style={{
-                  backgroundColor: designSystem.colors.primary[500],
-                  borderRadius: designSystem.borderRadius.lg,
-                  paddingHorizontal: designSystem.spacing.md,
-                  paddingVertical: designSystem.spacing.sm,
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  shadowColor: designSystem.colors.primary[500],
-                  shadowOffset: { width: 0, height: 4 },
-                  shadowOpacity: 0.3,
-                  shadowRadius: 8,
-                  elevation: 4,
-                }}
-              >
-                <Plus size={16} color="#ffffff" />
-                <Text style={{
-                  fontSize: designSystem.typography.fontSize.sm,
-                  fontWeight: designSystem.typography.fontWeight.semibold,
-                  color: '#ffffff',
-                  marginLeft: designSystem.spacing.xs,
-                }}>
-                  New {activeTab === 'quotes' ? 'Quote' : 'Invoice'}
-                </Text>
-              </Pressable>
-            </View>
+            {invoicesData && (
+              <Text style={[textStyles.body, styles.invoiceCount]}>
+                {invoicesData?.length || 0} invoice{(invoicesData?.length || 0) !== 1 ? 's' : ''}
+              </Text>
+            )}
           </View>
-
-          {/* Tab Navigation */}
-          <View style={{
-            backgroundColor: 'rgba(255, 255, 255, 0.8)',
-            borderRadius: designSystem.borderRadius.xl,
-            padding: designSystem.spacing.xs,
-            borderWidth: 1,
-            borderColor: 'rgba(255, 255, 255, 0.6)',
-            shadowColor: '#000',
-            shadowOffset: { width: 0, height: 2 },
-            shadowOpacity: 0.1,
-            shadowRadius: 4,
-            elevation: 2,
-          }}>
-            <View style={{ flexDirection: 'row' }}>
-              <Pressable
-                onPress={() => setActiveTab('quotes')}
-                style={{
-                  flex: 1,
-                  backgroundColor: activeTab === 'quotes' 
-                    ? designSystem.colors.primary[500] 
-                    : 'transparent',
-                  borderRadius: designSystem.borderRadius.lg,
-                  paddingVertical: designSystem.spacing.sm,
-                  alignItems: 'center',
-                }}
-              >
-                <Text style={{
-                  fontSize: designSystem.typography.fontSize.sm,
-                  fontWeight: designSystem.typography.fontWeight.semibold,
-                  color: activeTab === 'quotes' 
-                    ? '#ffffff' 
-                    : designSystem.colors.text.secondary,
-                }}>
-                  Quotes ({quotes.length})
-                </Text>
-              </Pressable>
-              <Pressable
-                onPress={() => setActiveTab('invoices')}
-                style={{
-                  flex: 1,
-                  backgroundColor: activeTab === 'invoices' 
-                    ? designSystem.colors.primary[500] 
-                    : 'transparent',
-                  borderRadius: designSystem.borderRadius.lg,
-                  paddingVertical: designSystem.spacing.sm,
-                  alignItems: 'center',
-                }}
-              >
-                <Text style={{
-                  fontSize: designSystem.typography.fontSize.sm,
-                  fontWeight: designSystem.typography.fontWeight.semibold,
-                  color: activeTab === 'invoices' 
-                    ? '#ffffff' 
-                    : designSystem.colors.text.secondary,
-                }}>
-                  Invoices ({invoices.length})
-                </Text>
-              </Pressable>
-            </View>
+          <View style={styles.headerRight}>
+            <Button
+              variant="primary"
+              size="sm"
+              onPress={handleAddInvoice}
+              style={styles.addButton}
+              title="New"
+            />
           </View>
         </View>
 
-        {/* Content */}
-        <ScrollView
-          style={{ flex: 1 }}
-          contentContainerStyle={{ 
-            padding: designSystem.spacing.md,
-            paddingTop: 0,
-          }}
-          showsVerticalScrollIndicator={false}
-        >
-          {activeTab === 'quotes' ? (
-            quotes.length > 0 ? (
-              quotes.map(renderQuoteCard)
-            ) : (
-              <View style={{
-                backgroundColor: 'rgba(255, 255, 255, 0.8)',
-                borderRadius: designSystem.borderRadius.xl,
-                padding: designSystem.spacing.xl,
-                alignItems: 'center',
-                borderWidth: 1,
-                borderColor: 'rgba(255, 255, 255, 0.6)',
-                shadowColor: '#000',
-                shadowOffset: { width: 0, height: 4 },
-                shadowOpacity: 0.1,
-                shadowRadius: 8,
-                elevation: 4,
-              }}>
-                <FileText size={48} color={designSystem.colors.gray[400]} />
-                <Text style={{
-                  fontSize: designSystem.typography.fontSize.lg,
-                  fontWeight: designSystem.typography.fontWeight.semibold,
-                  color: designSystem.colors.text.primary,
-                  marginTop: designSystem.spacing.md,
-                  marginBottom: designSystem.spacing.xs,
-                }}>
-                  No quotes yet
-                </Text>
-                <Text style={{
-                  fontSize: designSystem.typography.fontSize.sm,
-                  color: designSystem.colors.text.secondary,
-                  textAlign: 'center',
-                }}>
-                  Create your first quote to get started
-                </Text>
-              </View>
-            )
-          ) : (
-            invoices.length > 0 ? (
-              invoices.map(renderInvoiceCard)
-            ) : (
-              <View style={{
-                backgroundColor: 'rgba(255, 255, 255, 0.8)',
-                borderRadius: designSystem.borderRadius.xl,
-                padding: designSystem.spacing.xl,
-                alignItems: 'center',
-                borderWidth: 1,
-                borderColor: 'rgba(255, 255, 255, 0.6)',
-                shadowColor: '#000',
-                shadowOffset: { width: 0, height: 4 },
-                shadowOpacity: 0.1,
-                shadowRadius: 8,
-                elevation: 4,
-              }}>
-                                 <Receipt size={48} color={designSystem.colors.gray[400]} />
-                <Text style={{
-                  fontSize: designSystem.typography.fontSize.lg,
-                  fontWeight: designSystem.typography.fontWeight.semibold,
-                  color: designSystem.colors.text.primary,
-                  marginTop: designSystem.spacing.md,
-                  marginBottom: designSystem.spacing.xs,
-                }}>
-                  No invoices yet
-                </Text>
-                <Text style={{
-                  fontSize: designSystem.typography.fontSize.sm,
-                  color: designSystem.colors.text.secondary,
-                  textAlign: 'center',
-                }}>
-                  Create your first invoice to get started
-                </Text>
-              </View>
-            )
-          )}
-        </ScrollView>
+        <View style={styles.filters}>
+          <SearchInput
+            placeholder="Search invoices..."
+            onSearch={handleSearch}
+            style={styles.searchInput}
+          />
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.statusFilters}
+          >
+            <Button
+              variant={statusFilter === 'all' ? 'primary' : 'outline'}
+              size="sm"
+              onPress={() => setStatusFilter('all')}
+              style={styles.filterButton}
+              title="All"
+            />
+            <Button
+              variant={statusFilter === 'draft' ? 'primary' : 'outline'}
+              size="sm"
+              onPress={() => setStatusFilter('draft')}
+              style={styles.filterButton}
+              title="Draft"
+            />
+            <Button
+              variant={statusFilter === 'sent' ? 'primary' : 'outline'}
+              size="sm"
+              onPress={() => setStatusFilter('sent')}
+              style={styles.filterButton}
+              title="Sent"
+            />
+            <Button
+              variant={statusFilter === 'paid' ? 'primary' : 'outline'}
+              size="sm"
+              onPress={() => setStatusFilter('paid')}
+              style={styles.filterButton}
+              title="Paid"
+            />
+            <Button
+              variant={statusFilter === 'overdue' ? 'primary' : 'outline'}
+              size="sm"
+              onPress={() => setStatusFilter('overdue')}
+              style={styles.filterButton}
+              title="Overdue"
+            />
+          </ScrollView>
+        </View>
       </View>
-    </SafeAreaView>
+
+      {/* Content */}
+      {isLoading ? (
+        <LoadingSkeleton />
+      ) : invoicesData?.length === 0 ? (
+        <EmptyState onAddInvoice={handleAddInvoice} />
+      ) : (
+        <ScrollView
+          style={styles.scrollView}
+          contentContainerStyle={styles.listContainer}
+          refreshControl={
+            <RefreshControl
+              refreshing={isLoading}
+              onRefresh={handleRefresh}
+              tintColor={theme.colors.primary}
+            />
+          }
+        >
+          {invoicesData?.map((invoice) => (
+            <InvoiceCard
+              key={invoice.id}
+              invoice={invoice}
+              onEdit={handleEditInvoice}
+              onDelete={handleDeleteInvoice}
+            />
+          ))}
+        </ScrollView>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      <Modal visible={showDeleteModal} onClose={() => setShowDeleteModal(false)}>
+        <ModalHeader>
+          <Text style={[textStyles.h3, styles.modalTitle]}>Delete Invoice</Text>
+        </ModalHeader>
+        <ModalContent>
+          <Text style={[textStyles.body, styles.modalMessage]}>
+            Are you sure you want to delete invoice #{selectedInvoice?.number}? This action cannot be undone.
+          </Text>
+        </ModalContent>
+        <ModalFooter>
+          <Button
+            variant="outline"
+            size="md"
+            onPress={() => setShowDeleteModal(false)}
+            style={styles.modalButton}
+            title="Cancel"
+          />
+          <Button
+            variant="primary"
+            size="md"
+            onPress={confirmDelete}
+            loading={deleteInvoiceMutation.isPending}
+            style={{ ...styles.modalButton, backgroundColor: theme.colors.error }}
+            title="Delete"
+          />
+        </ModalFooter>
+      </Modal>
+    </View>
   );
 }
+
+// Styles
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: theme.colors.background,
+  },
+  header: {
+    padding: theme.spacing.lg,
+    backgroundColor: theme.colors.surface,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.border,
+  },
+  headerTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: theme.spacing.md,
+  },
+  headerLeft: {
+    flex: 1,
+  },
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.sm,
+  },
+  screenTitle: {
+    color: theme.colors.text.primary,
+    marginBottom: theme.spacing.xs,
+  },
+  invoiceCount: {
+    color: theme.colors.text.secondary,
+  },
+
+  addButton: {
+    paddingHorizontal: theme.spacing.sm,
+  },
+  filters: {
+    gap: theme.spacing.md,
+  },
+  searchInput: {
+    marginBottom: 0,
+  },
+  statusFilters: {
+    gap: theme.spacing.sm,
+  },
+  filterButton: {
+    marginRight: theme.spacing.sm,
+  },
+  scrollView: {
+    flex: 1,
+  },
+  listContainer: {
+    padding: theme.spacing.lg,
+  },
+  invoiceCard: {
+    marginBottom: theme.spacing.md,
+  },
+  invoiceHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+  },
+  invoiceInfo: {
+    flex: 1,
+  },
+  invoiceNumberRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.sm,
+    marginBottom: theme.spacing.xs,
+  },
+  invoiceNumber: {
+    color: theme.colors.text.primary,
+    flex: 1,
+  },
+  invoiceAmount: {
+    color: theme.colors.text.primary,
+    fontWeight: '600',
+    marginBottom: theme.spacing.xs,
+  },
+  dueDateRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.xs,
+  },
+  dueDate: {
+    color: theme.colors.text.secondary,
+  },
+  invoiceActions: {
+    flexDirection: 'row',
+    gap: theme.spacing.xs,
+  },
+  actionButton: {
+    paddingHorizontal: theme.spacing.sm,
+  },
+  emptyState: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: theme.spacing.xl,
+  },
+  emptyIcon: {
+    marginBottom: theme.spacing.lg,
+  },
+  emptyTitle: {
+    color: theme.colors.text.primary,
+    marginBottom: theme.spacing.sm,
+    textAlign: 'center',
+  },
+  emptySubtitle: {
+    color: theme.colors.text.secondary,
+    marginBottom: theme.spacing.xl,
+    textAlign: 'center',
+  },
+  emptyButton: {
+    minWidth: 120,
+  },
+  skeletonContainer: {
+    padding: theme.spacing.lg,
+  },
+  skeletonCard: {
+    marginBottom: theme.spacing.md,
+    height: 120,
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: theme.spacing.xl,
+  },
+  errorTitle: {
+    color: theme.colors.text.primary,
+    marginBottom: theme.spacing.sm,
+    textAlign: 'center',
+  },
+  errorMessage: {
+    color: theme.colors.text.secondary,
+    marginBottom: theme.spacing.xl,
+    textAlign: 'center',
+  },
+  errorButton: {
+    minWidth: 120,
+  },
+  
+  // Modal styles
+  modalTitle: {
+    color: theme.colors.text.primary,
+  },
+  modalMessage: {
+    color: theme.colors.text.secondary,
+    lineHeight: 20,
+  },
+  modalButton: {
+    flex: 1,
+    marginHorizontal: theme.spacing.xs,
+  },
+});
