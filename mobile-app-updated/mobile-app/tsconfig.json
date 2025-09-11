@@ -1,9 +1,0 @@
-{
-  "extends": "expo/tsconfig.base",
-  "compilerOptions": {
-    "jsx": "react-jsx",
-    "strict": true,
-    "target": "es2017",
-    "moduleResolution": "node"
-  }
-}
