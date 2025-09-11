@@ -4,8 +4,8 @@ import { theme } from '../../lib/theme/tokens';
 
 export function Section({ title, children } : { title: string; children: React.ReactNode }) {
   return (
-    <View style={{ marginBottom: 24 }}>
-      <Text style={{ color: theme.colors.text.primary, fontFamily: 'Inter_700Bold', fontSize: 16, marginBottom: 8, letterSpacing: 0.5 }}>
+    <View style={{ marginBottom: theme.semantic.spacing.lg }}>
+      <Text style={{ color: theme.semantic.colors.text.primary, fontFamily: theme.semantic.type.family.primary, fontWeight: theme.semantic.type.weight.semibold, fontSize: theme.semantic.type.section, marginBottom: theme.semantic.spacing.sm, letterSpacing: 0.5 }}>
         {title}
       </Text>
       {children}

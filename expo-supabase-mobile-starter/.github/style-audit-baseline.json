@@ -1,0 +1,1125 @@
+{
+  "generatedAt": "2025-09-04T18:15:59.400Z",
+  "issues": [
+    {
+      "file": "lib/state/simpleStore.ts",
+      "line": 142,
+      "type": "color",
+      "message": "Inline color literal detected (hex/rgb/rgba/hsl). Use theme tokens from lib/theme/tokens.ts.",
+      "key": "lib/state/simpleStore.ts:142:color"
+    },
+    {
+      "file": "lib/state/settings.tsx",
+      "line": 7,
+      "type": "color",
+      "message": "Inline color literal detected (hex/rgb/rgba/hsl). Use theme tokens from lib/theme/tokens.ts.",
+      "key": "lib/state/settings.tsx:7:color"
+    },
+    {
+      "file": "lib/state/slices/settingsSlice.ts",
+      "line": 100,
+      "type": "color",
+      "message": "Inline color literal detected (hex/rgb/rgba/hsl). Use theme tokens from lib/theme/tokens.ts.",
+      "key": "lib/state/slices/settingsSlice.ts:100:color"
+    },
+    {
+      "file": "lib/pdf/templates.ts",
+      "line": 74,
+      "type": "spacing",
+      "message": "padding: 20 is not in spacing tokens. Use spacing scale from lib/theme/tokens.ts (or derive from tokens).",
+      "key": "lib/pdf/templates.ts:74:spacing"
+    },
+    {
+      "file": "lib/pdf/templates.ts",
+      "line": 75,
+      "type": "color",
+      "message": "Inline color literal detected (hex/rgb/rgba/hsl). Use theme tokens from lib/theme/tokens.ts.",
+      "key": "lib/pdf/templates.ts:75:color"
+    },
+    {
+      "file": "lib/pdf/templates.ts",
+      "line": 84,
+      "type": "color",
+      "message": "Inline color literal detected (hex/rgb/rgba/hsl). Use theme tokens from lib/theme/tokens.ts.",
+      "key": "lib/pdf/templates.ts:84:color"
+    },
+    {
+      "file": "lib/pdf/templates.ts",
+      "line": 95,
+      "type": "color",
+      "message": "Inline color literal detected (hex/rgb/rgba/hsl). Use theme tokens from lib/theme/tokens.ts.",
+      "key": "lib/pdf/templates.ts:95:color"
+    },
+    {
+      "file": "lib/pdf/templates.ts",
+      "line": 100,
+      "type": "color",
+      "message": "Inline color literal detected (hex/rgb/rgba/hsl). Use theme tokens from lib/theme/tokens.ts.",
+      "key": "lib/pdf/templates.ts:100:color"
+    },
+    {
+      "file": "lib/pdf/templates.ts",
+      "line": 110,
+      "type": "color",
+      "message": "Inline color literal detected (hex/rgb/rgba/hsl). Use theme tokens from lib/theme/tokens.ts.",
+      "key": "lib/pdf/templates.ts:110:color"
+    },
+    {
+      "file": "lib/pdf/templates.ts",
+      "line": 115,
+      "type": "color",
+      "message": "Inline color literal detected (hex/rgb/rgba/hsl). Use theme tokens from lib/theme/tokens.ts.",
+      "key": "lib/pdf/templates.ts:115:color"
+    },
+    {
+      "file": "lib/pdf/templates.ts",
+      "line": 120,
+      "type": "color",
+      "message": "Inline color literal detected (hex/rgb/rgba/hsl). Use theme tokens from lib/theme/tokens.ts.",
+      "key": "lib/pdf/templates.ts:120:color"
+    },
+    {
+      "file": "lib/pdf/templates.ts",
+      "line": 124,
+      "type": "spacing",
+      "message": "padding: 20 is not in spacing tokens. Use spacing scale from lib/theme/tokens.ts (or derive from tokens).",
+      "key": "lib/pdf/templates.ts:124:spacing"
+    },
+    {
+      "file": "lib/pdf/templates.ts",
+      "line": 125,
+      "type": "color",
+      "message": "Inline color literal detected (hex/rgb/rgba/hsl). Use theme tokens from lib/theme/tokens.ts.",
+      "key": "lib/pdf/templates.ts:125:color"
+    },
+    {
+      "file": "lib/pdf/templates.ts",
+      "line": 131,
+      "type": "color",
+      "message": "Inline color literal detected (hex/rgb/rgba/hsl). Use theme tokens from lib/theme/tokens.ts.",
+      "key": "lib/pdf/templates.ts:131:color"
+    },
+    {
+      "file": "lib/pdf/templates.ts",
+      "line": 137,
+      "type": "color",
+      "message": "Inline color literal detected (hex/rgb/rgba/hsl). Use theme tokens from lib/theme/tokens.ts.",
+      "key": "lib/pdf/templates.ts:137:color"
+    },
+    {
+      "file": "lib/pdf/templates.ts",
+      "line": 142,
+      "type": "color",
+      "message": "Inline color literal detected (hex/rgb/rgba/hsl). Use theme tokens from lib/theme/tokens.ts.",
+      "key": "lib/pdf/templates.ts:142:color"
+    },
+    {
+      "file": "lib/pdf/templates.ts",
+      "line": 151,
+      "type": "color",
+      "message": "Inline color literal detected (hex/rgb/rgba/hsl). Use theme tokens from lib/theme/tokens.ts.",
+      "key": "lib/pdf/templates.ts:151:color"
+    },
+    {
+      "file": "lib/pdf/templates.ts",
+      "line": 155,
+      "type": "color",
+      "message": "Inline color literal detected (hex/rgb/rgba/hsl). Use theme tokens from lib/theme/tokens.ts.",
+      "key": "lib/pdf/templates.ts:155:color"
+    },
+    {
+      "file": "lib/pdf/templates.ts",
+      "line": 156,
+      "type": "color",
+      "message": "Inline color literal detected (hex/rgb/rgba/hsl). Use theme tokens from lib/theme/tokens.ts.",
+      "key": "lib/pdf/templates.ts:156:color"
+    },
+    {
+      "file": "lib/pdf/templates.ts",
+      "line": 160,
+      "type": "color",
+      "message": "Inline color literal detected (hex/rgb/rgba/hsl). Use theme tokens from lib/theme/tokens.ts.",
+      "key": "lib/pdf/templates.ts:160:color"
+    },
+    {
+      "file": "lib/pdf/templates.ts",
+      "line": 167,
+      "type": "color",
+      "message": "Inline color literal detected (hex/rgb/rgba/hsl). Use theme tokens from lib/theme/tokens.ts.",
+      "key": "lib/pdf/templates.ts:167:color"
+    },
+    {
+      "file": "lib/pdf/templates.ts",
+      "line": 177,
+      "type": "color",
+      "message": "Inline color literal detected (hex/rgb/rgba/hsl). Use theme tokens from lib/theme/tokens.ts.",
+      "key": "lib/pdf/templates.ts:177:color"
+    },
+    {
+      "file": "lib/pdf/templates.ts",
+      "line": 182,
+      "type": "color",
+      "message": "Inline color literal detected (hex/rgb/rgba/hsl). Use theme tokens from lib/theme/tokens.ts.",
+      "key": "lib/pdf/templates.ts:182:color"
+    },
+    {
+      "file": "lib/pdf/templates.ts",
+      "line": 183,
+      "type": "color",
+      "message": "Inline color literal detected (hex/rgb/rgba/hsl). Use theme tokens from lib/theme/tokens.ts.",
+      "key": "lib/pdf/templates.ts:183:color"
+    },
+    {
+      "file": "lib/pdf/templates.ts",
+      "line": 188,
+      "type": "spacing",
+      "message": "padding: 20 is not in spacing tokens. Use spacing scale from lib/theme/tokens.ts (or derive from tokens).",
+      "key": "lib/pdf/templates.ts:188:spacing"
+    },
+    {
+      "file": "lib/pdf/templates.ts",
+      "line": 189,
+      "type": "color",
+      "message": "Inline color literal detected (hex/rgb/rgba/hsl). Use theme tokens from lib/theme/tokens.ts.",
+      "key": "lib/pdf/templates.ts:189:color"
+    },
+    {
+      "file": "lib/pdf/templates.ts",
+      "line": 195,
+      "type": "color",
+      "message": "Inline color literal detected (hex/rgb/rgba/hsl). Use theme tokens from lib/theme/tokens.ts.",
+      "key": "lib/pdf/templates.ts:195:color"
+    },
+    {
+      "file": "lib/pdf/templates.ts",
+      "line": 200,
+      "type": "color",
+      "message": "Inline color literal detected (hex/rgb/rgba/hsl). Use theme tokens from lib/theme/tokens.ts.",
+      "key": "lib/pdf/templates.ts:200:color"
+    },
+    {
+      "file": "lib/pdf/templates.ts",
+      "line": 205,
+      "type": "color",
+      "message": "Inline color literal detected (hex/rgb/rgba/hsl). Use theme tokens from lib/theme/tokens.ts.",
+      "key": "lib/pdf/templates.ts:205:color"
+    },
+    {
+      "file": "lib/pdf/templates.ts",
+      "line": 211,
+      "type": "color",
+      "message": "Inline color literal detected (hex/rgb/rgba/hsl). Use theme tokens from lib/theme/tokens.ts.",
+      "key": "lib/pdf/templates.ts:211:color"
+    },
+    {
+      "file": "lib/pdf/templates.ts",
+      "line": 214,
+      "type": "color",
+      "message": "Inline color literal detected (hex/rgb/rgba/hsl). Use theme tokens from lib/theme/tokens.ts.",
+      "key": "lib/pdf/templates.ts:214:color"
+    },
+    {
+      "file": "lib/pdf/templates.ts",
+      "line": 345,
+      "type": "color",
+      "message": "Inline color literal detected (hex/rgb/rgba/hsl). Use theme tokens from lib/theme/tokens.ts.",
+      "key": "lib/pdf/templates.ts:345:color"
+    },
+    {
+      "file": "lib/pdf/templates.ts",
+      "line": 352,
+      "type": "color",
+      "message": "Inline color literal detected (hex/rgb/rgba/hsl). Use theme tokens from lib/theme/tokens.ts.",
+      "key": "lib/pdf/templates.ts:352:color"
+    },
+    {
+      "file": "lib/pdf/templates.ts",
+      "line": 358,
+      "type": "color",
+      "message": "Inline color literal detected (hex/rgb/rgba/hsl). Use theme tokens from lib/theme/tokens.ts.",
+      "key": "lib/pdf/templates.ts:358:color"
+    },
+    {
+      "file": "lib/pdf/templates.ts",
+      "line": 360,
+      "type": "spacing",
+      "message": "padding: 30 is not in spacing tokens. Use spacing scale from lib/theme/tokens.ts (or derive from tokens).",
+      "key": "lib/pdf/templates.ts:360:spacing"
+    },
+    {
+      "file": "lib/pdf/templates.ts",
+      "line": 365,
+      "type": "color",
+      "message": "Inline color literal detected (hex/rgb/rgba/hsl). Use theme tokens from lib/theme/tokens.ts.",
+      "key": "lib/pdf/templates.ts:365:color"
+    },
+    {
+      "file": "lib/pdf/templates.ts",
+      "line": 367,
+      "type": "color",
+      "message": "Inline color literal detected (hex/rgb/rgba/hsl). Use theme tokens from lib/theme/tokens.ts.",
+      "key": "lib/pdf/templates.ts:367:color"
+    },
+    {
+      "file": "lib/pdf/templates.ts",
+      "line": 371,
+      "type": "color",
+      "message": "Inline color literal detected (hex/rgb/rgba/hsl). Use theme tokens from lib/theme/tokens.ts.",
+      "key": "lib/pdf/templates.ts:371:color"
+    },
+    {
+      "file": "lib/pdf/templates.ts",
+      "line": 375,
+      "type": "color",
+      "message": "Inline color literal detected (hex/rgb/rgba/hsl). Use theme tokens from lib/theme/tokens.ts.",
+      "key": "lib/pdf/templates.ts:375:color"
+    },
+    {
+      "file": "lib/pdf/templates.ts",
+      "line": 376,
+      "type": "spacing",
+      "message": "padding: 20 is not in spacing tokens. Use spacing scale from lib/theme/tokens.ts (or derive from tokens).",
+      "key": "lib/pdf/templates.ts:376:spacing"
+    },
+    {
+      "file": "lib/pdf/templates.ts",
+      "line": 378,
+      "type": "color",
+      "message": "Inline color literal detected (hex/rgb/rgba/hsl). Use theme tokens from lib/theme/tokens.ts.",
+      "key": "lib/pdf/templates.ts:378:color"
+    },
+    {
+      "file": "lib/pdf/templates.ts",
+      "line": 381,
+      "type": "color",
+      "message": "Inline color literal detected (hex/rgb/rgba/hsl). Use theme tokens from lib/theme/tokens.ts.",
+      "key": "lib/pdf/templates.ts:381:color"
+    },
+    {
+      "file": "lib/pdf/templates.ts",
+      "line": 383,
+      "type": "spacing",
+      "message": "padding: 15 is not in spacing tokens. Use spacing scale from lib/theme/tokens.ts (or derive from tokens).",
+      "key": "lib/pdf/templates.ts:383:spacing"
+    },
+    {
+      "file": "lib/pdf/invoiceHtml.ts",
+      "line": 7,
+      "type": "color",
+      "message": "Inline color literal detected (hex/rgb/rgba/hsl). Use theme tokens from lib/theme/tokens.ts.",
+      "key": "lib/pdf/invoiceHtml.ts:7:color"
+    },
+    {
+      "file": "lib/pdf/invoiceHtml.ts",
+      "line": 9,
+      "type": "color",
+      "message": "Inline color literal detected (hex/rgb/rgba/hsl). Use theme tokens from lib/theme/tokens.ts.",
+      "key": "lib/pdf/invoiceHtml.ts:9:color"
+    },
+    {
+      "file": "lib/pdf/invoiceHtml.ts",
+      "line": 12,
+      "type": "color",
+      "message": "Inline color literal detected (hex/rgb/rgba/hsl). Use theme tokens from lib/theme/tokens.ts.",
+      "key": "lib/pdf/invoiceHtml.ts:12:color"
+    },
+    {
+      "file": "lib/pdf/generators.ts",
+      "line": 204,
+      "type": "spacing",
+      "message": "padding: 20 is not in spacing tokens. Use spacing scale from lib/theme/tokens.ts (or derive from tokens).",
+      "key": "lib/pdf/generators.ts:204:spacing"
+    },
+    {
+      "file": "lib/pdf/generators.ts",
+      "line": 205,
+      "type": "color",
+      "message": "Inline color literal detected (hex/rgb/rgba/hsl). Use theme tokens from lib/theme/tokens.ts.",
+      "key": "lib/pdf/generators.ts:205:color"
+    },
+    {
+      "file": "lib/pdf/generators.ts",
+      "line": 211,
+      "type": "color",
+      "message": "Inline color literal detected (hex/rgb/rgba/hsl). Use theme tokens from lib/theme/tokens.ts.",
+      "key": "lib/pdf/generators.ts:211:color"
+    },
+    {
+      "file": "lib/pdf/generators.ts",
+      "line": 223,
+      "type": "color",
+      "message": "Inline color literal detected (hex/rgb/rgba/hsl). Use theme tokens from lib/theme/tokens.ts.",
+      "key": "lib/pdf/generators.ts:223:color"
+    },
+    {
+      "file": "lib/pdf/generators.ts",
+      "line": 224,
+      "type": "spacing",
+      "message": "padding: 15 is not in spacing tokens. Use spacing scale from lib/theme/tokens.ts (or derive from tokens).",
+      "key": "lib/pdf/generators.ts:224:spacing"
+    },
+    {
+      "file": "lib/pdf/generators.ts",
+      "line": 238,
+      "type": "color",
+      "message": "Inline color literal detected (hex/rgb/rgba/hsl). Use theme tokens from lib/theme/tokens.ts.",
+      "key": "lib/pdf/generators.ts:238:color"
+    },
+    {
+      "file": "lib/pdf/generators.ts",
+      "line": 243,
+      "type": "color",
+      "message": "Inline color literal detected (hex/rgb/rgba/hsl). Use theme tokens from lib/theme/tokens.ts.",
+      "key": "lib/pdf/generators.ts:243:color"
+    },
+    {
+      "file": "lib/pdf/generators.ts",
+      "line": 255,
+      "type": "color",
+      "message": "Inline color literal detected (hex/rgb/rgba/hsl). Use theme tokens from lib/theme/tokens.ts.",
+      "key": "lib/pdf/generators.ts:255:color"
+    },
+    {
+      "file": "lib/pdf/generators.ts",
+      "line": 264,
+      "type": "color",
+      "message": "Inline color literal detected (hex/rgb/rgba/hsl). Use theme tokens from lib/theme/tokens.ts.",
+      "key": "lib/pdf/generators.ts:264:color"
+    },
+    {
+      "file": "lib/pdf/generators.ts",
+      "line": 348,
+      "type": "color",
+      "message": "Inline color literal detected (hex/rgb/rgba/hsl). Use theme tokens from lib/theme/tokens.ts.",
+      "key": "lib/pdf/generators.ts:348:color"
+    },
+    {
+      "file": "lib/pdf/generators.ts",
+      "line": 350,
+      "type": "color",
+      "message": "Inline color literal detected (hex/rgb/rgba/hsl). Use theme tokens from lib/theme/tokens.ts.",
+      "key": "lib/pdf/generators.ts:350:color"
+    },
+    {
+      "file": "lib/pdf/generators.ts",
+      "line": 355,
+      "type": "spacing",
+      "message": "margin: 20 is not in spacing tokens. Use spacing scale from lib/theme/tokens.ts (or derive from tokens).",
+      "key": "lib/pdf/generators.ts:355:spacing"
+    },
+    {
+      "file": "lib/pdf/generators.ts",
+      "line": 358,
+      "type": "color",
+      "message": "Inline color literal detected (hex/rgb/rgba/hsl). Use theme tokens from lib/theme/tokens.ts.",
+      "key": "lib/pdf/generators.ts:358:color"
+    },
+    {
+      "file": "lib/pdf/generators.ts",
+      "line": 362,
+      "type": "color",
+      "message": "Inline color literal detected (hex/rgb/rgba/hsl). Use theme tokens from lib/theme/tokens.ts.",
+      "key": "lib/pdf/generators.ts:362:color"
+    },
+    {
+      "file": "lib/pdf/generators.ts",
+      "line": 381,
+      "type": "spacing",
+      "message": "padding: 20 is not in spacing tokens. Use spacing scale from lib/theme/tokens.ts (or derive from tokens).",
+      "key": "lib/pdf/generators.ts:381:spacing"
+    },
+    {
+      "file": "lib/pdf/generators.ts",
+      "line": 382,
+      "type": "color",
+      "message": "Inline color literal detected (hex/rgb/rgba/hsl). Use theme tokens from lib/theme/tokens.ts.",
+      "key": "lib/pdf/generators.ts:382:color"
+    },
+    {
+      "file": "lib/pdf/generators.ts",
+      "line": 387,
+      "type": "spacing",
+      "message": "padding: 20 is not in spacing tokens. Use spacing scale from lib/theme/tokens.ts (or derive from tokens).",
+      "key": "lib/pdf/generators.ts:387:spacing"
+    },
+    {
+      "file": "lib/pdf/generators.ts",
+      "line": 388,
+      "type": "color",
+      "message": "Inline color literal detected (hex/rgb/rgba/hsl). Use theme tokens from lib/theme/tokens.ts.",
+      "key": "lib/pdf/generators.ts:388:color"
+    },
+    {
+      "file": "lib/pdf/generators.ts",
+      "line": 397,
+      "type": "color",
+      "message": "Inline color literal detected (hex/rgb/rgba/hsl). Use theme tokens from lib/theme/tokens.ts.",
+      "key": "lib/pdf/generators.ts:397:color"
+    },
+    {
+      "file": "lib/pdf/generators.ts",
+      "line": 401,
+      "type": "spacing",
+      "message": "padding: 15 is not in spacing tokens. Use spacing scale from lib/theme/tokens.ts (or derive from tokens).",
+      "key": "lib/pdf/generators.ts:401:spacing"
+    },
+    {
+      "file": "lib/pdf/generators.ts",
+      "line": 403,
+      "type": "color",
+      "message": "Inline color literal detected (hex/rgb/rgba/hsl). Use theme tokens from lib/theme/tokens.ts.",
+      "key": "lib/pdf/generators.ts:403:color"
+    },
+    {
+      "file": "lib/pdf/generators.ts",
+      "line": 406,
+      "type": "color",
+      "message": "Inline color literal detected (hex/rgb/rgba/hsl). Use theme tokens from lib/theme/tokens.ts.",
+      "key": "lib/pdf/generators.ts:406:color"
+    },
+    {
+      "file": "lib/pdf/generators.ts",
+      "line": 411,
+      "type": "color",
+      "message": "Inline color literal detected (hex/rgb/rgba/hsl). Use theme tokens from lib/theme/tokens.ts.",
+      "key": "lib/pdf/generators.ts:411:color"
+    },
+    {
+      "file": "lib/pdf/generators.ts",
+      "line": 422,
+      "type": "spacing",
+      "message": "padding: 10 is not in spacing tokens. Use spacing scale from lib/theme/tokens.ts (or derive from tokens).",
+      "key": "lib/pdf/generators.ts:422:spacing"
+    },
+    {
+      "file": "lib/pdf/generators.ts",
+      "line": 423,
+      "type": "color",
+      "message": "Inline color literal detected (hex/rgb/rgba/hsl). Use theme tokens from lib/theme/tokens.ts.",
+      "key": "lib/pdf/generators.ts:423:color"
+    },
+    {
+      "file": "lib/pdf/generators.ts",
+      "line": 428,
+      "type": "color",
+      "message": "Inline color literal detected (hex/rgb/rgba/hsl). Use theme tokens from lib/theme/tokens.ts.",
+      "key": "lib/pdf/generators.ts:428:color"
+    },
+    {
+      "file": "lib/pdf/generators.ts",
+      "line": 432,
+      "type": "spacing",
+      "message": "padding: 20 is not in spacing tokens. Use spacing scale from lib/theme/tokens.ts (or derive from tokens).",
+      "key": "lib/pdf/generators.ts:432:spacing"
+    },
+    {
+      "file": "lib/pdf/generators.ts",
+      "line": 433,
+      "type": "color",
+      "message": "Inline color literal detected (hex/rgb/rgba/hsl). Use theme tokens from lib/theme/tokens.ts.",
+      "key": "lib/pdf/generators.ts:433:color"
+    },
+    {
+      "file": "lib/pdf/generators.ts",
+      "line": 523,
+      "type": "spacing",
+      "message": "padding: 20 is not in spacing tokens. Use spacing scale from lib/theme/tokens.ts (or derive from tokens).",
+      "key": "lib/pdf/generators.ts:523:spacing"
+    },
+    {
+      "file": "lib/pdf/generators.ts",
+      "line": 524,
+      "type": "color",
+      "message": "Inline color literal detected (hex/rgb/rgba/hsl). Use theme tokens from lib/theme/tokens.ts.",
+      "key": "lib/pdf/generators.ts:524:color"
+    },
+    {
+      "file": "lib/pdf/generators.ts",
+      "line": 526,
+      "type": "color",
+      "message": "Inline color literal detected (hex/rgb/rgba/hsl). Use theme tokens from lib/theme/tokens.ts.",
+      "key": "lib/pdf/generators.ts:526:color"
+    },
+    {
+      "file": "lib/pdf/generators.ts",
+      "line": 531,
+      "type": "color",
+      "message": "Inline color literal detected (hex/rgb/rgba/hsl). Use theme tokens from lib/theme/tokens.ts.",
+      "key": "lib/pdf/generators.ts:531:color"
+    },
+    {
+      "file": "lib/pdf/generators.ts",
+      "line": 543,
+      "type": "color",
+      "message": "Inline color literal detected (hex/rgb/rgba/hsl). Use theme tokens from lib/theme/tokens.ts.",
+      "key": "lib/pdf/generators.ts:543:color"
+    },
+    {
+      "file": "lib/pdf/generators.ts",
+      "line": 544,
+      "type": "spacing",
+      "message": "padding: 15 is not in spacing tokens. Use spacing scale from lib/theme/tokens.ts (or derive from tokens).",
+      "key": "lib/pdf/generators.ts:544:spacing"
+    },
+    {
+      "file": "lib/pdf/generators.ts",
+      "line": 548,
+      "type": "color",
+      "message": "Inline color literal detected (hex/rgb/rgba/hsl). Use theme tokens from lib/theme/tokens.ts.",
+      "key": "lib/pdf/generators.ts:548:color"
+    },
+    {
+      "file": "lib/pdf/generators.ts",
+      "line": 549,
+      "type": "spacing",
+      "message": "padding: 15 is not in spacing tokens. Use spacing scale from lib/theme/tokens.ts (or derive from tokens).",
+      "key": "lib/pdf/generators.ts:549:spacing"
+    },
+    {
+      "file": "lib/pdf/generators.ts",
+      "line": 555,
+      "type": "color",
+      "message": "Inline color literal detected (hex/rgb/rgba/hsl). Use theme tokens from lib/theme/tokens.ts.",
+      "key": "lib/pdf/generators.ts:555:color"
+    },
+    {
+      "file": "lib/pdf/generators.ts",
+      "line": 559,
+      "type": "color",
+      "message": "Inline color literal detected (hex/rgb/rgba/hsl). Use theme tokens from lib/theme/tokens.ts.",
+      "key": "lib/pdf/generators.ts:559:color"
+    },
+    {
+      "file": "lib/pdf/generators.ts",
+      "line": 560,
+      "type": "spacing",
+      "message": "padding: 10 is not in spacing tokens. Use spacing scale from lib/theme/tokens.ts (or derive from tokens).",
+      "key": "lib/pdf/generators.ts:560:spacing"
+    },
+    {
+      "file": "lib/pdf/generators.ts",
+      "line": 564,
+      "type": "color",
+      "message": "Inline color literal detected (hex/rgb/rgba/hsl). Use theme tokens from lib/theme/tokens.ts.",
+      "key": "lib/pdf/generators.ts:564:color"
+    },
+    {
+      "file": "lib/pdf/generators.ts",
+      "line": 574,
+      "type": "color",
+      "message": "Inline color literal detected (hex/rgb/rgba/hsl). Use theme tokens from lib/theme/tokens.ts.",
+      "key": "lib/pdf/generators.ts:574:color"
+    },
+    {
+      "file": "lib/pdf/generators.ts",
+      "line": 577,
+      "type": "spacing",
+      "message": "padding: 10 is not in spacing tokens. Use spacing scale from lib/theme/tokens.ts (or derive from tokens).",
+      "key": "lib/pdf/generators.ts:577:spacing"
+    },
+    {
+      "file": "lib/pdf/generators.ts",
+      "line": 578,
+      "type": "color",
+      "message": "Inline color literal detected (hex/rgb/rgba/hsl). Use theme tokens from lib/theme/tokens.ts.",
+      "key": "lib/pdf/generators.ts:578:color"
+    },
+    {
+      "file": "lib/pdf/generators.ts",
+      "line": 582,
+      "type": "color",
+      "message": "Inline color literal detected (hex/rgb/rgba/hsl). Use theme tokens from lib/theme/tokens.ts.",
+      "key": "lib/pdf/generators.ts:582:color"
+    },
+    {
+      "file": "lib/pdf/generators.ts",
+      "line": 586,
+      "type": "color",
+      "message": "Inline color literal detected (hex/rgb/rgba/hsl). Use theme tokens from lib/theme/tokens.ts.",
+      "key": "lib/pdf/generators.ts:586:color"
+    },
+    {
+      "file": "lib/pdf/generators.ts",
+      "line": 587,
+      "type": "spacing",
+      "message": "padding: 15 is not in spacing tokens. Use spacing scale from lib/theme/tokens.ts (or derive from tokens).",
+      "key": "lib/pdf/generators.ts:587:spacing"
+    },
+    {
+      "file": "lib/pdf/templates/modern-pro.ts",
+      "line": 22,
+      "type": "color",
+      "message": "Inline color literal detected (hex/rgb/rgba/hsl). Use theme tokens from lib/theme/tokens.ts.",
+      "key": "lib/pdf/templates/modern-pro.ts:22:color"
+    },
+    {
+      "file": "lib/pdf/templates/modern-pro.ts",
+      "line": 24,
+      "type": "color",
+      "message": "Inline color literal detected (hex/rgb/rgba/hsl). Use theme tokens from lib/theme/tokens.ts.",
+      "key": "lib/pdf/templates/modern-pro.ts:24:color"
+    },
+    {
+      "file": "lib/pdf/templates/modern-pro.ts",
+      "line": 29,
+      "type": "spacing",
+      "message": "margin: 20 is not in spacing tokens. Use spacing scale from lib/theme/tokens.ts (or derive from tokens).",
+      "key": "lib/pdf/templates/modern-pro.ts:29:spacing"
+    },
+    {
+      "file": "lib/pdf/templates/modern-pro.ts",
+      "line": 32,
+      "type": "color",
+      "message": "Inline color literal detected (hex/rgb/rgba/hsl). Use theme tokens from lib/theme/tokens.ts.",
+      "key": "lib/pdf/templates/modern-pro.ts:32:color"
+    },
+    {
+      "file": "lib/pdf/templates/modern-pro.ts",
+      "line": 36,
+      "type": "color",
+      "message": "Inline color literal detected (hex/rgb/rgba/hsl). Use theme tokens from lib/theme/tokens.ts.",
+      "key": "lib/pdf/templates/modern-pro.ts:36:color"
+    },
+    {
+      "file": "lib/pdf/templates/modern-pro.ts",
+      "line": 55,
+      "type": "spacing",
+      "message": "padding: 20 is not in spacing tokens. Use spacing scale from lib/theme/tokens.ts (or derive from tokens).",
+      "key": "lib/pdf/templates/modern-pro.ts:55:spacing"
+    },
+    {
+      "file": "lib/pdf/templates/modern-pro.ts",
+      "line": 56,
+      "type": "color",
+      "message": "Inline color literal detected (hex/rgb/rgba/hsl). Use theme tokens from lib/theme/tokens.ts.",
+      "key": "lib/pdf/templates/modern-pro.ts:56:color"
+    },
+    {
+      "file": "lib/pdf/templates/modern-pro.ts",
+      "line": 61,
+      "type": "spacing",
+      "message": "padding: 20 is not in spacing tokens. Use spacing scale from lib/theme/tokens.ts (or derive from tokens).",
+      "key": "lib/pdf/templates/modern-pro.ts:61:spacing"
+    },
+    {
+      "file": "lib/pdf/templates/modern-pro.ts",
+      "line": 62,
+      "type": "color",
+      "message": "Inline color literal detected (hex/rgb/rgba/hsl). Use theme tokens from lib/theme/tokens.ts.",
+      "key": "lib/pdf/templates/modern-pro.ts:62:color"
+    },
+    {
+      "file": "lib/pdf/templates/modern-pro.ts",
+      "line": 71,
+      "type": "color",
+      "message": "Inline color literal detected (hex/rgb/rgba/hsl). Use theme tokens from lib/theme/tokens.ts.",
+      "key": "lib/pdf/templates/modern-pro.ts:71:color"
+    },
+    {
+      "file": "lib/pdf/templates/modern-pro.ts",
+      "line": 75,
+      "type": "spacing",
+      "message": "padding: 15 is not in spacing tokens. Use spacing scale from lib/theme/tokens.ts (or derive from tokens).",
+      "key": "lib/pdf/templates/modern-pro.ts:75:spacing"
+    },
+    {
+      "file": "lib/pdf/templates/modern-pro.ts",
+      "line": 77,
+      "type": "color",
+      "message": "Inline color literal detected (hex/rgb/rgba/hsl). Use theme tokens from lib/theme/tokens.ts.",
+      "key": "lib/pdf/templates/modern-pro.ts:77:color"
+    },
+    {
+      "file": "lib/pdf/templates/modern-pro.ts",
+      "line": 80,
+      "type": "color",
+      "message": "Inline color literal detected (hex/rgb/rgba/hsl). Use theme tokens from lib/theme/tokens.ts.",
+      "key": "lib/pdf/templates/modern-pro.ts:80:color"
+    },
+    {
+      "file": "lib/pdf/templates/modern-pro.ts",
+      "line": 85,
+      "type": "color",
+      "message": "Inline color literal detected (hex/rgb/rgba/hsl). Use theme tokens from lib/theme/tokens.ts.",
+      "key": "lib/pdf/templates/modern-pro.ts:85:color"
+    },
+    {
+      "file": "lib/pdf/templates/modern-pro.ts",
+      "line": 96,
+      "type": "spacing",
+      "message": "padding: 10 is not in spacing tokens. Use spacing scale from lib/theme/tokens.ts (or derive from tokens).",
+      "key": "lib/pdf/templates/modern-pro.ts:96:spacing"
+    },
+    {
+      "file": "lib/pdf/templates/modern-pro.ts",
+      "line": 97,
+      "type": "color",
+      "message": "Inline color literal detected (hex/rgb/rgba/hsl). Use theme tokens from lib/theme/tokens.ts.",
+      "key": "lib/pdf/templates/modern-pro.ts:97:color"
+    },
+    {
+      "file": "lib/pdf/templates/modern-pro.ts",
+      "line": 102,
+      "type": "color",
+      "message": "Inline color literal detected (hex/rgb/rgba/hsl). Use theme tokens from lib/theme/tokens.ts.",
+      "key": "lib/pdf/templates/modern-pro.ts:102:color"
+    },
+    {
+      "file": "lib/pdf/templates/modern-pro.ts",
+      "line": 106,
+      "type": "spacing",
+      "message": "padding: 20 is not in spacing tokens. Use spacing scale from lib/theme/tokens.ts (or derive from tokens).",
+      "key": "lib/pdf/templates/modern-pro.ts:106:spacing"
+    },
+    {
+      "file": "lib/pdf/templates/modern-pro.ts",
+      "line": 107,
+      "type": "color",
+      "message": "Inline color literal detected (hex/rgb/rgba/hsl). Use theme tokens from lib/theme/tokens.ts.",
+      "key": "lib/pdf/templates/modern-pro.ts:107:color"
+    },
+    {
+      "file": "lib/pdf/templates/ledger-pro.ts",
+      "line": 21,
+      "type": "spacing",
+      "message": "padding: 20 is not in spacing tokens. Use spacing scale from lib/theme/tokens.ts (or derive from tokens).",
+      "key": "lib/pdf/templates/ledger-pro.ts:21:spacing"
+    },
+    {
+      "file": "lib/pdf/templates/ledger-pro.ts",
+      "line": 22,
+      "type": "color",
+      "message": "Inline color literal detected (hex/rgb/rgba/hsl). Use theme tokens from lib/theme/tokens.ts.",
+      "key": "lib/pdf/templates/ledger-pro.ts:22:color"
+    },
+    {
+      "file": "lib/pdf/templates/ledger-pro.ts",
+      "line": 24,
+      "type": "color",
+      "message": "Inline color literal detected (hex/rgb/rgba/hsl). Use theme tokens from lib/theme/tokens.ts.",
+      "key": "lib/pdf/templates/ledger-pro.ts:24:color"
+    },
+    {
+      "file": "lib/pdf/templates/ledger-pro.ts",
+      "line": 29,
+      "type": "color",
+      "message": "Inline color literal detected (hex/rgb/rgba/hsl). Use theme tokens from lib/theme/tokens.ts.",
+      "key": "lib/pdf/templates/ledger-pro.ts:29:color"
+    },
+    {
+      "file": "lib/pdf/templates/ledger-pro.ts",
+      "line": 41,
+      "type": "color",
+      "message": "Inline color literal detected (hex/rgb/rgba/hsl). Use theme tokens from lib/theme/tokens.ts.",
+      "key": "lib/pdf/templates/ledger-pro.ts:41:color"
+    },
+    {
+      "file": "lib/pdf/templates/ledger-pro.ts",
+      "line": 42,
+      "type": "spacing",
+      "message": "padding: 15 is not in spacing tokens. Use spacing scale from lib/theme/tokens.ts (or derive from tokens).",
+      "key": "lib/pdf/templates/ledger-pro.ts:42:spacing"
+    },
+    {
+      "file": "lib/pdf/templates/ledger-pro.ts",
+      "line": 46,
+      "type": "color",
+      "message": "Inline color literal detected (hex/rgb/rgba/hsl). Use theme tokens from lib/theme/tokens.ts.",
+      "key": "lib/pdf/templates/ledger-pro.ts:46:color"
+    },
+    {
+      "file": "lib/pdf/templates/ledger-pro.ts",
+      "line": 47,
+      "type": "spacing",
+      "message": "padding: 15 is not in spacing tokens. Use spacing scale from lib/theme/tokens.ts (or derive from tokens).",
+      "key": "lib/pdf/templates/ledger-pro.ts:47:spacing"
+    },
+    {
+      "file": "lib/pdf/templates/ledger-pro.ts",
+      "line": 53,
+      "type": "color",
+      "message": "Inline color literal detected (hex/rgb/rgba/hsl). Use theme tokens from lib/theme/tokens.ts.",
+      "key": "lib/pdf/templates/ledger-pro.ts:53:color"
+    },
+    {
+      "file": "lib/pdf/templates/ledger-pro.ts",
+      "line": 57,
+      "type": "color",
+      "message": "Inline color literal detected (hex/rgb/rgba/hsl). Use theme tokens from lib/theme/tokens.ts.",
+      "key": "lib/pdf/templates/ledger-pro.ts:57:color"
+    },
+    {
+      "file": "lib/pdf/templates/ledger-pro.ts",
+      "line": 58,
+      "type": "spacing",
+      "message": "padding: 10 is not in spacing tokens. Use spacing scale from lib/theme/tokens.ts (or derive from tokens).",
+      "key": "lib/pdf/templates/ledger-pro.ts:58:spacing"
+    },
+    {
+      "file": "lib/pdf/templates/ledger-pro.ts",
+      "line": 62,
+      "type": "color",
+      "message": "Inline color literal detected (hex/rgb/rgba/hsl). Use theme tokens from lib/theme/tokens.ts.",
+      "key": "lib/pdf/templates/ledger-pro.ts:62:color"
+    },
+    {
+      "file": "lib/pdf/templates/ledger-pro.ts",
+      "line": 72,
+      "type": "color",
+      "message": "Inline color literal detected (hex/rgb/rgba/hsl). Use theme tokens from lib/theme/tokens.ts.",
+      "key": "lib/pdf/templates/ledger-pro.ts:72:color"
+    },
+    {
+      "file": "lib/pdf/templates/ledger-pro.ts",
+      "line": 75,
+      "type": "spacing",
+      "message": "padding: 10 is not in spacing tokens. Use spacing scale from lib/theme/tokens.ts (or derive from tokens).",
+      "key": "lib/pdf/templates/ledger-pro.ts:75:spacing"
+    },
+    {
+      "file": "lib/pdf/templates/ledger-pro.ts",
+      "line": 76,
+      "type": "color",
+      "message": "Inline color literal detected (hex/rgb/rgba/hsl). Use theme tokens from lib/theme/tokens.ts.",
+      "key": "lib/pdf/templates/ledger-pro.ts:76:color"
+    },
+    {
+      "file": "lib/pdf/templates/ledger-pro.ts",
+      "line": 80,
+      "type": "color",
+      "message": "Inline color literal detected (hex/rgb/rgba/hsl). Use theme tokens from lib/theme/tokens.ts.",
+      "key": "lib/pdf/templates/ledger-pro.ts:80:color"
+    },
+    {
+      "file": "lib/pdf/templates/ledger-pro.ts",
+      "line": 84,
+      "type": "color",
+      "message": "Inline color literal detected (hex/rgb/rgba/hsl). Use theme tokens from lib/theme/tokens.ts.",
+      "key": "lib/pdf/templates/ledger-pro.ts:84:color"
+    },
+    {
+      "file": "lib/pdf/templates/ledger-pro.ts",
+      "line": 85,
+      "type": "spacing",
+      "message": "padding: 15 is not in spacing tokens. Use spacing scale from lib/theme/tokens.ts (or derive from tokens).",
+      "key": "lib/pdf/templates/ledger-pro.ts:85:spacing"
+    },
+    {
+      "file": "lib/pdf/templates/clean-minimal.ts",
+      "line": 21,
+      "type": "spacing",
+      "message": "padding: 20 is not in spacing tokens. Use spacing scale from lib/theme/tokens.ts (or derive from tokens).",
+      "key": "lib/pdf/templates/clean-minimal.ts:21:spacing"
+    },
+    {
+      "file": "lib/pdf/templates/clean-minimal.ts",
+      "line": 22,
+      "type": "color",
+      "message": "Inline color literal detected (hex/rgb/rgba/hsl). Use theme tokens from lib/theme/tokens.ts.",
+      "key": "lib/pdf/templates/clean-minimal.ts:22:color"
+    },
+    {
+      "file": "lib/pdf/templates/clean-minimal.ts",
+      "line": 28,
+      "type": "color",
+      "message": "Inline color literal detected (hex/rgb/rgba/hsl). Use theme tokens from lib/theme/tokens.ts.",
+      "key": "lib/pdf/templates/clean-minimal.ts:28:color"
+    },
+    {
+      "file": "lib/pdf/templates/clean-minimal.ts",
+      "line": 37,
+      "type": "color",
+      "message": "Inline color literal detected (hex/rgb/rgba/hsl). Use theme tokens from lib/theme/tokens.ts.",
+      "key": "lib/pdf/templates/clean-minimal.ts:37:color"
+    },
+    {
+      "file": "lib/pdf/templates/clean-minimal.ts",
+      "line": 38,
+      "type": "spacing",
+      "message": "padding: 15 is not in spacing tokens. Use spacing scale from lib/theme/tokens.ts (or derive from tokens).",
+      "key": "lib/pdf/templates/clean-minimal.ts:38:spacing"
+    },
+    {
+      "file": "lib/pdf/templates/clean-minimal.ts",
+      "line": 52,
+      "type": "color",
+      "message": "Inline color literal detected (hex/rgb/rgba/hsl). Use theme tokens from lib/theme/tokens.ts.",
+      "key": "lib/pdf/templates/clean-minimal.ts:52:color"
+    },
+    {
+      "file": "lib/pdf/templates/clean-minimal.ts",
+      "line": 57,
+      "type": "color",
+      "message": "Inline color literal detected (hex/rgb/rgba/hsl). Use theme tokens from lib/theme/tokens.ts.",
+      "key": "lib/pdf/templates/clean-minimal.ts:57:color"
+    },
+    {
+      "file": "lib/pdf/templates/clean-minimal.ts",
+      "line": 69,
+      "type": "color",
+      "message": "Inline color literal detected (hex/rgb/rgba/hsl). Use theme tokens from lib/theme/tokens.ts.",
+      "key": "lib/pdf/templates/clean-minimal.ts:69:color"
+    },
+    {
+      "file": "lib/pdf/templates/clean-minimal.ts",
+      "line": 78,
+      "type": "color",
+      "message": "Inline color literal detected (hex/rgb/rgba/hsl). Use theme tokens from lib/theme/tokens.ts.",
+      "key": "lib/pdf/templates/clean-minimal.ts:78:color"
+    },
+    {
+      "file": "lib/pdf/assets/default-assets.ts",
+      "line": 20,
+      "type": "color",
+      "message": "Inline color literal detected (hex/rgb/rgba/hsl). Use theme tokens from lib/theme/tokens.ts.",
+      "key": "lib/pdf/assets/default-assets.ts:20:color"
+    },
+    {
+      "file": "lib/pdf/assets/default-assets.ts",
+      "line": 21,
+      "type": "color",
+      "message": "Inline color literal detected (hex/rgb/rgba/hsl). Use theme tokens from lib/theme/tokens.ts.",
+      "key": "lib/pdf/assets/default-assets.ts:21:color"
+    },
+    {
+      "file": "lib/pdf/assets/default-assets.ts",
+      "line": 22,
+      "type": "color",
+      "message": "Inline color literal detected (hex/rgb/rgba/hsl). Use theme tokens from lib/theme/tokens.ts.",
+      "key": "lib/pdf/assets/default-assets.ts:22:color"
+    },
+    {
+      "file": "lib/pdf/assets/default-assets.ts",
+      "line": 23,
+      "type": "color",
+      "message": "Inline color literal detected (hex/rgb/rgba/hsl). Use theme tokens from lib/theme/tokens.ts.",
+      "key": "lib/pdf/assets/default-assets.ts:23:color"
+    },
+    {
+      "file": "lib/pdf/assets/default-assets.ts",
+      "line": 24,
+      "type": "color",
+      "message": "Inline color literal detected (hex/rgb/rgba/hsl). Use theme tokens from lib/theme/tokens.ts.",
+      "key": "lib/pdf/assets/default-assets.ts:24:color"
+    },
+    {
+      "file": "lib/pdf/assets/default-assets.ts",
+      "line": 25,
+      "type": "color",
+      "message": "Inline color literal detected (hex/rgb/rgba/hsl). Use theme tokens from lib/theme/tokens.ts.",
+      "key": "lib/pdf/assets/default-assets.ts:25:color"
+    },
+    {
+      "file": "lib/pdf/assets/default-assets.ts",
+      "line": 26,
+      "type": "color",
+      "message": "Inline color literal detected (hex/rgb/rgba/hsl). Use theme tokens from lib/theme/tokens.ts.",
+      "key": "lib/pdf/assets/default-assets.ts:26:color"
+    },
+    {
+      "file": "components/ui/Pill.tsx",
+      "line": 21,
+      "type": "spacing",
+      "message": "paddingVertical: 6 is not in spacing tokens. Use spacing scale from lib/theme/tokens.ts (or derive from tokens).",
+      "key": "components/ui/Pill.tsx:21:spacing"
+    },
+    {
+      "file": "components/ui/Modal.tsx",
+      "line": 233,
+      "type": "spacing",
+      "message": "paddingTop: 50 is not in spacing tokens. Use spacing scale from lib/theme/tokens.ts (or derive from tokens).",
+      "key": "components/ui/Modal.tsx:233:spacing"
+    },
+    {
+      "file": "components/layout/Header.tsx",
+      "line": 12,
+      "type": "spacing",
+      "message": "marginTop: 6 is not in spacing tokens. Use spacing scale from lib/theme/tokens.ts (or derive from tokens).",
+      "key": "components/layout/Header.tsx:12:spacing"
+    },
+    {
+      "file": "app/(tabs)/_layout.tsx",
+      "line": 27,
+      "type": "spacing",
+      "message": "marginBottom: 2 is not in spacing tokens. Use spacing scale from lib/theme/tokens.ts (or derive from tokens).",
+      "key": "app/(tabs)/_layout.tsx:27:spacing"
+    },
+    {
+      "file": "app/(tabs)/kitai/index.tsx",
+      "line": 40,
+      "type": "spacing",
+      "message": "paddingVertical: 14 is not in spacing tokens. Use spacing scale from lib/theme/tokens.ts (or derive from tokens).",
+      "key": "app/(tabs)/kitai/index.tsx:40:spacing"
+    },
+    {
+      "file": "app/(tabs)/kitai/index.tsx",
+      "line": 55,
+      "type": "spacing",
+      "message": "marginBottom: 6 is not in spacing tokens. Use spacing scale from lib/theme/tokens.ts (or derive from tokens).",
+      "key": "app/(tabs)/kitai/index.tsx:55:spacing"
+    },
+    {
+      "file": "app/(tabs)/kitai/index.tsx",
+      "line": 66,
+      "type": "spacing",
+      "message": "marginBottom: 6 is not in spacing tokens. Use spacing scale from lib/theme/tokens.ts (or derive from tokens).",
+      "key": "app/(tabs)/kitai/index.tsx:66:spacing"
+    },
+    {
+      "file": "app/(tabs)/kitai/index.tsx",
+      "line": 77,
+      "type": "spacing",
+      "message": "marginBottom: 6 is not in spacing tokens. Use spacing scale from lib/theme/tokens.ts (or derive from tokens).",
+      "key": "app/(tabs)/kitai/index.tsx:77:spacing"
+    },
+    {
+      "file": "app/(tabs)/dashboard/settings.tsx",
+      "line": 96,
+      "type": "color",
+      "message": "Inline color literal detected (hex/rgb/rgba/hsl). Use theme tokens from lib/theme/tokens.ts.",
+      "key": "app/(tabs)/dashboard/settings.tsx:96:color"
+    },
+    {
+      "file": "app/(tabs)/dashboard/settings.tsx",
+      "line": 226,
+      "type": "color",
+      "message": "Inline color literal detected (hex/rgb/rgba/hsl). Use theme tokens from lib/theme/tokens.ts.",
+      "key": "app/(tabs)/dashboard/settings.tsx:226:color"
+    },
+    {
+      "file": "app/(tabs)/dashboard/index.tsx",
+      "line": 38,
+      "type": "spacing",
+      "message": "marginTop: 6 is not in spacing tokens. Use spacing scale from lib/theme/tokens.ts (or derive from tokens).",
+      "key": "app/(tabs)/dashboard/index.tsx:38:spacing"
+    },
+    {
+      "file": "app/(tabs)/dashboard/index.tsx",
+      "line": 43,
+      "type": "spacing",
+      "message": "marginTop: 2 is not in spacing tokens. Use spacing scale from lib/theme/tokens.ts (or derive from tokens).",
+      "key": "app/(tabs)/dashboard/index.tsx:43:spacing"
+    },
+    {
+      "file": "app/(tabs)/dashboard/index.tsx",
+      "line": 59,
+      "type": "fontSize",
+      "message": "fontSize: 22 is not in typography.fontSize tokens. Use typography scale from lib/theme/tokens.ts.",
+      "key": "app/(tabs)/dashboard/index.tsx:59:fontSize"
+    },
+    {
+      "file": "app/(tabs)/dashboard/index.tsx",
+      "line": 60,
+      "type": "spacing",
+      "message": "marginTop: 6 is not in spacing tokens. Use spacing scale from lib/theme/tokens.ts (or derive from tokens).",
+      "key": "app/(tabs)/dashboard/index.tsx:60:spacing"
+    },
+    {
+      "file": "app/(tabs)/dashboard/index.tsx",
+      "line": 65,
+      "type": "spacing",
+      "message": "marginTop: 2 is not in spacing tokens. Use spacing scale from lib/theme/tokens.ts (or derive from tokens).",
+      "key": "app/(tabs)/dashboard/index.tsx:65:spacing"
+    }
+  ]
+}

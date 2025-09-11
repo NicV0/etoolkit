@@ -1,4 +1,124 @@
-# UI/UX Specification
+# UI/UX Specification (MVP v2)
+
+Cursor Prompt Guardrail
+- Do not add or remove tabs. Tabs are exactly Dashboard, Clients, Documents, Billing.
+- Use only the defined component set and theme tokens. Follow spacing grid and type scale.
+- All actions use OS share sheet; email/SMS via deep links. No SMTP/SMS providers.
+- AI is contextual buttons only; outputs editable; undo snackbar required.
+- Quotas: Free = 1GB, 5 exports/day, 10 AI/month; Pro = 10GB, unlimited. Enforce and show meters.
+- Money: store in integer cents. Totals: Subtotal + Line Taxes – Invoice Discount = Grand Total.
+- PDF: Free shows watermark; Pro removes it. Templates include CopperLine/CircuitBoard/ClimateCraft/BuildSheet.
+- RLS: every row belongs to auth.uid(). Never bypass.
+- Do not auto-send anything; user must confirm share.
+- Test IDs: Use the provided ids for all critical elements.
+
+## Design System
+
+### Theme Tokens (Navy)
+- Palette
+  - Base: #0F2234 (navy)
+  - Surface: #122A40
+  - Raised/Bubble: #17344D
+  - Accent-1 (primary): #3AA1FF
+  - Accent-2 (active/hover): #6CA8FF
+  - Success: #3CCB8E | Warning: #FFB020 | Danger: #FF5A5A
+  - Text: Primary #EAF2FB, Secondary #B6C7DA, Muted #7F95AC, Divider #23425F
+- Type Scale: Title 28–32; Section 20; Body 16; Meta 13–14
+- Spacing grid: 16dp side gutters; 8/12/16/24/32dp vertical rhythm
+- Corners: rounded; soft shadows
+- Touch targets: ≥44×44dp; list rows ≥56dp
+- Accessibility: Contrast ≥4.5:1; labels/roles on all interactive controls
+- Feedback: Taps animate; success uses toast/snackbar; inline errors + toast; shimmer for loading lists
+
+### Primitive Components (reused everywhere)
+- Card, Section, Row
+- Button.Primary, Button.Secondary, IconButton
+- Input, Select
+- Tag, Badge, Pill
+- Toast/Snackbar, EmptyState
+- Meter (storage/AI/exports)
+- HelpOverlay
+
+### Icon System
+- Library: lucide-react-native
+- Tab Icons + Labels: Dashboard, Clients, Documents, Billing (active = Accent-1)
+- Common: Plus, Pencil, Trash2, ChevronRight, Search, Share2, FilePlus2, Phone, Mail, MessageSquare
+
+## Navigation & Layout
+- Bottom tabs (exact 4, fixed order): Dashboard • Clients • Documents • Billing
+- Active tab uses Accent-1; icons + labels; no hidden/extra tabs
+- Share: Always OS share sheet. Email/SMS use mailto:/sms: deep links
+
+## Test IDs (stable)
+- Screens: screen.dashboard, screen.clients.list, screen.clients.detail, screen.documents.list, screen.documents.create, screen.billing, screen.settings
+- Core actions: btn.new-invoice, btn.new-quote, btn.new-contract, btn.upload-doc, btn.preview, btn.share-pdf, btn.mark-paid, btn.record-partial
+- AI: ai.suggest-line-items, ai.add-clause, ai.polish-text, ai.add-warranty, ai.reminder-email
+- Pricebook: btn.quick-add-pricebook, sheet.pricebook, input.pricebook-search, btn.manage-pricebook, modal.pricebook-manager, row.pricebook-item.<id>
+- Totals: input.invoice-discount, field.invoice-discount-type, label.totals-subtotal, label.totals-tax, label.totals-discount, label.totals-grand
+- Client defaults: input.client-default-tax, input.client-payment-instructions, select.client-reminders
+- Quota meters: meter.storage, meter.ai-assists, meter.exports
+
+## Screens, States, Flows
+
+### Dashboard (screen.dashboard)
+- Header: “Dashboard”
+- Snapshot cards (tap-through):
+  - card.outstanding: $ + count of unpaid invoices
+  - card.paid-month: $ paid this month
+  - card.active-clients: # clients with activity this month
+- Quick actions row: btn.new-invoice · btn.new-quote · btn.new-contract · btn.upload-doc
+- Activity feed: Last 20 items (doc created/sent/paid, partial payment, file upload/delete, clause inserted). Unpaid invoice entries expose inline ai.reminder-email.
+- Empty: “Let’s create your first document” (CTA → btn.new-invoice)
+- Acceptance: Tapping cards deep-links to filtered screens; feed rows open relevant doc/client; reminder draft inserts editable body only; never auto-sends
+
+### Clients
+- List (screen.clients.list)
+  - Search box; rows: name, last activity snippet, badge for open balance if > 0; optional Pinned at top
+  - Empty: “Add your first client”
+  - Acceptance: Search filters instantly; row tap → detail
+- Detail (screen.clients.detail)
+  - Header: Name; actions: icon.call (tel:), icon.sms (sms:), icon.email (mailto:)
+  - Global storage meter with CTA near 90% cap
+  - Sections: Documents (Vault) with tags (Contracts/Billing/Pictures/Other), search, preview/retag/rename/delete; Notes (rich; ai.polish-text); Client Defaults (default tax rate, payment instructions, preferred reminder cadence)
+  - HelpOverlay icon shows 2–3 static slides (no sample data)
+  - Acceptance: Contact buttons open native apps; upload respects type/size limits; meter updates; defaults prefill during document creation
+
+### Documents
+- List (screen.documents.list): Filters Type/Status/Date/Client; Search by title/number; row fields: Number/Title, Type, Client, Status chip, Date, Amount (if applicable); Empty: CTA to btn.new-invoice
+- Create Wizard (screen.documents.create):
+  1) Type → 2) Client (inline quick add) → 3) Details → 4) Branding → 5) Preview PDF → 6) Save & Share
+  - Details — Invoice/Quote: Line items table; Pricebook Quick Add (sheet.pricebook); Manager (modal.pricebook-manager); Totals panel; AI turbo (ai.suggest-line-items, ai.polish-text, ai.add-warranty)
+  - Details — Contract: Sectioned editor; Clause Picker; AI turbo (ai.add-clause, ai.polish-text); Disclaimer visible
+  - Branding: Free = standard template + watermark + default blue accent; Pro = upload logo, choose accent, select template (CopperLine, CircuitBoard, ClimateCraft, BuildSheet). Branding snapshot stored on the document
+  - Preview: Live HTML→PDF preview matching export; paginate cleanly; headers repeat
+  - Save & Share: Save doc and immutable PDF to Vault (auto-tag Billing); btn.share-pdf → OS share; Free increments daily export counter; block after 5/day with CTA
+  - Acceptance: Pricebook add never overwrites; taxable maps to line tax; totals recompute instantly; integer cents only; watermark correct for Free; PDF matches preview; Share never auto-sends
+
+### Billing (screen.billing)
+- Views: Unpaid, Paid This Month, All. Rows: Client, Amount, Age chip
+- Detail actions: btn.mark-paid (date, method, note); btn.record-partial (amount, method, date, note); per-invoice reminder toggle (default from client)
+- Acceptance: Dashboard cards update within 1s; partial payments adjust outstanding precisely; rounding safe; Marking Paid cancels scheduled reminders
+
+### Settings (screen.settings)
+- Profile (email read-only, trade type), Sign out; Security (biometric/PIN lock); Meters (meter.storage, meter.ai-assists, meter.exports); Data Export (CSV); Legal (ToS/Privacy/Disclaimers); Upgrade screen (feature flags; no payments yet)
+
+## PDF Generation
+- Engine: HTML/CSS to PDF; simple tables; repeated headers on page breaks; top/bottom margins fixed; footer reserved for disclaimers/watermarks; font consistency; branding from stored snapshot
+
+## Analytics & Quality
+- Events: app_open, doc_created, doc_sent, invoice_paid, ai_assist_used {type}, file_uploaded, export_done, upgrade_click
+- Performance: First paint < 2s; 1-page PDF < 2.5s; Scroll ≥55fps; Accessibility verified (contrast, labels, focus order)
+
+## Error Handling & Edge Cases
+- Network loss: Show clear “Offline—actions unavailable”; fail gracefully
+- Storage full: Block uploads/exports with reason and CTA to delete/upgrade
+- Export cap hit: Block after 5/day (Free) reset at local midnight
+- AI quota hit: Prompt upgrade; manual editing allowed
+- SMS attachments unsupported: Fall back to link or message text; never claim attachment was sent
+
+## Visual Templates
+- Pro styles: CopperLine (Plumbing), CircuitBoard (Electrical), ClimateCraft (HVAC), BuildSheet (General)
+- Free template: “Trade Standard (Blue)” + watermark “Generated with eToolkit” bottom-right ~15% opacity
 
 ## Design System
 

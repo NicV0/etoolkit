@@ -3,7 +3,11 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "test": "vitest"
+    "test": "vitest",
+    "theme:check": "node expo-supabase-mobile-starter/scripts/check-disallowed-imports.js",
+    "style:audit": "node expo-supabase-mobile-starter/scripts/check-style-audit.js",
+    "style:audit:baseline": "node expo-supabase-mobile-starter/scripts/check-style-audit.js --write-baseline",
+    "f1-verify": "npm run theme:check && npm run style:audit"
   },
   "devDependencies": {
     "typescript": "^5.4.0",

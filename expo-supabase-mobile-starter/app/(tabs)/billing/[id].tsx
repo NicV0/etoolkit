@@ -62,9 +62,10 @@ const InvoiceStatusBadge: React.FC<{ status: string }> = ({ status }) => {
   };
 
   return (
-    <Badge variant={getStatusColor(status) as "success" | "warning" | "error" | "info" | "default"}>
-      {status.charAt(0).toUpperCase() + status.slice(1)}
-    </Badge>
+    <Badge 
+      label={status.charAt(0).toUpperCase() + status.slice(1)}
+      variant={getStatusColor(status) as "success" | "warning" | "error" | "info" | "default"}
+    />
   );
 };
 

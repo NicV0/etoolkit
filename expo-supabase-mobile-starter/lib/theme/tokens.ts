@@ -1,43 +1,47 @@
 // Design System Tokens
 // Based on UI/UX Specification
 
-// Color Palette
+// Color Palette (Navy theme per FRONTEND_PLAN)
 export const colors = {
-  // Primary Accent
-  primary: '#2563EB',
-  
-  // Dark Theme Colors
-  background: '#0F172A',
-  card: '#111827',
-  surface: '#0B1220',
-  border: '#1F2937',
-  
-  // Status Colors
-  success: '#10B981',
-  warning: '#F59E0B',
-  error: '#EF4444',
-  info: '#9CA3AF',
-  
-  // Text Colors
+  // Accent
+  primary: '#3AA1FF',       // Accent-1
+  accent2: '#6CA8FF',       // Accent-2
+
+  // Background stack
+  background: '#0F2234',    // Base
+  card: '#122A40',          // Surface
+  surface: '#17344D',       // Raised
+  border: '#23425F',        // Divider
+
+  // Status
+  success: '#3CCB8E',
+  warning: '#FFB020',
+  error: '#FF5A5A',
+  info: '#6CA8FF',
+
+  // Text
   text: {
-    primary: '#E5E7EB',
-    secondary: '#9CA3AF',
-    muted: '#6B7280',
-    inverse: '#FFFFFF',
+    primary: '#EAF2FB',
+    secondary: '#B6C7DA',
+    muted: '#7F95AC',
+    inverse: '#0F2234',
   },
-  
-  // Interactive States
+
+  // Interactive States (derived from accent)
   interactive: {
-    hover: '#1E40AF',
-    pressed: '#1D4ED8',
-    disabled: '#374151',
+    hover: '#6CA8FF',      // lighter accent
+    pressed: '#2C8DE6',    // darker accent
+    disabled: 'rgba(255,255,255,0.38)',
   },
-  
-  // Overlay Colors
+
+  // Overlay
   overlay: {
-    backdrop: 'rgba(0, 0, 0, 0.5)',
-    card: 'rgba(255, 255, 255, 0.05)',
+    backdrop: 'rgba(0,0,0,0.6)',
+    card: 'rgba(255,255,255,0.06)',
   },
+
+  // Input baseline
+  input: '#17344D',
 } as const;
 
 // Typography Scale
@@ -48,18 +52,19 @@ export const typography = {
   
   fontWeight: {
     regular: '400',
+    medium: '500',
     semibold: '600',
     bold: '700',
   },
   
   fontSize: {
-    // Caption
-    caption: 12,
+    // Meta
+    caption: 13,
     // Body
-    body: 14,
-    bodyStrong: 16,
+    body: 16,
+    bodyStrong: 18,
     // Section/Card Titles
-    section: 18,
+    section: 20,
     // Headings
     h3: 24,
     h2: 28,
@@ -78,15 +83,15 @@ export const spacing = {
   // Base spacing unit
   base: 4,
   
-  // Specific spacing values
-  xs: 4,
-  sm: 8,
-  md: 12,
-  lg: 16,
-  xl: 20,
-  '2xl': 24,
-  '3xl': 32,
-  '4xl': 48,
+  // Specific spacing values (semantic scale)
+  xs: 8,
+  sm: 12,
+  md: 16,
+  lg: 24,
+  xl: 32,
+  '2xl': 40,
+  '3xl': 48,
+  '4xl': 64,
   
   // Screen padding
   screen: 16,
@@ -94,7 +99,7 @@ export const spacing = {
   // Component spacing
   component: {
     padding: 16,
-    margin: 12,
+    margin: 16,
     gap: 12,
   },
 } as const;
@@ -103,9 +108,9 @@ export const spacing = {
 export const borderRadius = {
   none: 0,
   sm: 8,
-  md: 14,
-  lg: 20,
-  xl: 24,
+  md: 12,
+  lg: 16,
+  xl: 20,
   full: 9999,
 } as const;
 
@@ -191,6 +196,101 @@ export const zIndex = {
 } as const;
 
 // Export theme object
+// Semantic aliases to be used by UI components
+export const semantic = {
+  colors: {
+    background: {
+      base: colors.background,
+      surface: colors.card,
+      elevated: colors.surface,
+    },
+    text: {
+      primary: colors.text.primary,
+      secondary: colors.text.secondary,
+      muted: colors.text.muted,
+      inverse: colors.text.inverse,
+      onAccent: colors.text.inverse,
+    },
+    accent: {
+      primary: colors.primary,
+      primaryHover: colors.interactive.hover,
+      primaryPressed: colors.interactive.pressed,
+    },
+    state: {
+      success: colors.success,
+      warning: colors.warning,
+      danger: colors.error,
+      info: colors.info,
+      onDanger: colors.text.primary,
+    },
+    border: {
+      subtle: colors.border,
+    },
+    interactive: {
+      fill: colors.primary,
+      fillHover: colors.interactive.hover,
+      fillPressed: colors.interactive.pressed,
+      outline: colors.border,
+      outlineHover: colors.primary,
+      outlinePressed: colors.interactive.pressed,
+      disabled: colors.interactive.disabled,
+    },
+    focus: {
+      ring: '#6CA8FF',
+    },
+    overlay: {
+      backdrop: colors.overlay.backdrop,
+      card: colors.overlay.card,
+    },
+    input: {
+      background: colors.input,
+    },
+  },
+  radii: {
+    sm: borderRadius.sm,
+    md: borderRadius.md,
+    lg: borderRadius.lg,
+    xl: borderRadius.xl,
+    full: borderRadius.full,
+  },
+  spacing: {
+    xs: spacing.xs,
+    sm: spacing.sm,
+    md: spacing.md,
+    lg: spacing.lg,
+    xl: spacing.xl,
+    '2xl': spacing['2xl'],
+  },
+  shadows: {
+    card: shadows.md,
+    popover: shadows.lg,
+    modal: shadows.lg,
+  },
+  type: {
+    body: typography.fontSize.body,
+    meta: typography.fontSize.caption,
+    section: typography.fontSize.section,
+    titleXL: typography.fontSize.h1,
+    weight: typography.fontWeight,
+    line: typography.lineHeight,
+    family: typography.fontFamily,
+  },
+  component: {
+    skeleton: {
+      lineHeight: 14,
+      avatarSize: 40,
+      duration: 1300,
+    },
+    meter: {
+      height: 8,
+    },
+  },
+} as const;
+
+// Pass-through aliases (back-compat): semantic.text.onAccent -> semantic.colors.text.onAccent, semantic.state.onDanger -> semantic.colors.state.onDanger
+;(semantic as any).text = { get onAccent() { return (semantic as any).colors.text.onAccent } }
+;(semantic as any).state = { get onDanger() { return (semantic as any).colors.state.onDanger } }
+
 export const theme = {
   colors,
   typography,
@@ -202,6 +302,7 @@ export const theme = {
   breakpoints,
   hitTargets,
   zIndex,
+  semantic,
 } as const;
 
 // Type exports
@@ -209,3 +310,4 @@ export type Theme = typeof theme;
 export type Colors = typeof colors;
 export type Typography = typeof typography;
 export type Spacing = typeof spacing;
+export type Semantic = typeof semantic;

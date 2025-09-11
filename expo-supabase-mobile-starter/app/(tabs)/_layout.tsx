@@ -1,6 +1,6 @@
 import React from 'react';
 import { Tabs } from 'expo-router';
-import { Home, Users, Sparkles, Receipt } from 'lucide-react-native';
+import { Home, Users, FileText, Receipt } from 'lucide-react-native';
 import { theme } from '../../lib/theme/tokens';
 
 export default function TabsLayout() {
@@ -9,22 +9,32 @@ export default function TabsLayout() {
       screenOptions={{
         headerShown: false,
         tabBarStyle: {
-          backgroundColor: theme.colors.background,
-          borderTopColor: theme.colors.border,
+
+
+          backgroundColor: theme.semantic.colors.background.base as any,
+          borderTopColor: theme.semantic.colors.border.subtle as any,
           borderTopWidth: 1,
           height: 88, // Increased height for better touch targets
-          paddingBottom: 8,
-          paddingTop: 8,
+
+
+          paddingBottom: theme.semantic.spacing.xs,
+          paddingTop: theme.semantic.spacing.xs,
         },
-        tabBarActiveTintColor: theme.colors.primary,
-        tabBarInactiveTintColor: theme.colors.text.secondary,
+
+
+        tabBarActiveTintColor: theme.semantic.colors.accent.primary as any,
+        tabBarInactiveTintColor: theme.semantic.colors.text.secondary as any,
         tabBarLabelStyle: {
-          fontSize: theme.typography.fontSize.caption,
-          fontWeight: theme.typography.fontWeight.semibold,
-          marginTop: 4,
+
+
+
+          fontSize: theme.semantic.type.meta,
+          fontWeight: theme.semantic.type.weight.semibold as any,
+          marginTop: theme.semantic.spacing.xs / 2,
         },
         tabBarIconStyle: {
-          marginBottom: 2,
+
+          marginBottom: theme.semantic.spacing.xs / 4,
         },
       }}
     >
@@ -32,28 +42,33 @@ export default function TabsLayout() {
         name="dashboard" 
         options={{ 
           title: 'Dashboard', 
-          tabBarIcon: ({ color }) => <Home color={color} size={24} /> 
+
+          tabBarIcon: ({ color }) => <Home color={color as string} size={theme.iconSizes.xl} /> 
         }} 
       />
       <Tabs.Screen 
         name="clients" 
         options={{ 
           title: 'Clients', 
-          tabBarIcon: ({ color }) => <Users color={color} size={24} /> 
+
+          tabBarIcon: ({ color }) => <Users color={color as string} size={theme.iconSizes.xl} /> 
         }} 
       />
       <Tabs.Screen 
-        name="kitai" 
+        name="documents" 
         options={{ 
-          title: 'KitAI', 
-          tabBarIcon: ({ color }) => <Sparkles color={color} size={24} /> 
+          title: 'Documents', 
+          tabBarLabel: 'Documents',
+
+          tabBarIcon: ({ color }) => <FileText color={color as string} size={theme.iconSizes.xl} /> 
         }} 
       />
       <Tabs.Screen 
         name="billing" 
         options={{ 
           title: 'Billing', 
-          tabBarIcon: ({ color }) => <Receipt color={color} size={24} /> 
+
+          tabBarIcon: ({ color }) => <Receipt color={color as string} size={theme.iconSizes.xl} /> 
         }} 
       />
     </Tabs>

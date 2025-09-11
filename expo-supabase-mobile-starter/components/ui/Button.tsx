@@ -1,289 +1,121 @@
-import React from 'react';
-import {
-  TouchableOpacity,
-  Text,
-  StyleSheet,
-  ViewStyle,
-  TextStyle,
-  ActivityIndicator,
-  AccessibilityRole,
-} from 'react-native';
-import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withTiming,
-} from 'react-native-reanimated';
-import { theme } from '../../lib/theme/tokens';
-import { buttonStyles } from '../../lib/theme/utils';
-import { hitSlop4 } from '../../lib/a11y';
+import React from 'react'
+import { Pressable, Text, ViewStyle, TextStyle, GestureResponderEvent, ActivityIndicator, View } from 'react-native'
+import { semantic, theme } from '../../lib/theme/tokens'
 
-// Button variants
-export type ButtonVariant = 'primary' | 'secondary' | 'outline' | 'ghost';
-
-// Button sizes
-export type ButtonSize = 'sm' | 'md' | 'lg';
-
-// Button props interface
-export interface ButtonProps {
-  // Content
-  title: string;
-  onPress: () => void;
-  
-  // Variants
-  variant?: ButtonVariant;
-  size?: ButtonSize;
-  
-  // States
-  disabled?: boolean;
-  loading?: boolean;
-  
-  // Styling
-  style?: ViewStyle;
-  textStyle?: TextStyle;
-  
-  // Icons
-  leftIcon?: React.ReactNode;
-  rightIcon?: React.ReactNode;
-  
-  // Accessibility
-  accessibilityLabel?: string;
-  accessibilityHint?: string;
-  
-  // Other
-  fullWidth?: boolean;
+export type ButtonProps = {
+  title: string
+  onPress?: (e: GestureResponderEvent) => void
+  variant?: 'primary' | 'secondary' | 'outline' | 'ghost'
+  size?: 'sm' | 'md' | 'lg'
+  disabled?: boolean
+  accessibilityLabel?: string
+  leftIcon?: React.ReactNode
+  rightIcon?: React.ReactNode
+  loading?: boolean
+  style?: ViewStyle
+  testID?: string
 }
 
-// Button component
-export const Button: React.FC<ButtonProps> = React.memo(({
+export default function Button({
   title,
   onPress,
   variant = 'primary',
   size = 'md',
   disabled = false,
-  loading = false,
-  style,
-  textStyle,
+  accessibilityLabel,
   leftIcon,
   rightIcon,
-  accessibilityLabel,
-  accessibilityHint,
-  fullWidth = false,
-}) => {
-  // Animation values
-  const scale = useSharedValue(1);
-  const opacity = useSharedValue(1);
+  loading = false,
+  style,
+  testID,
+}: ButtonProps) {
+  const minHeight = 44
+  const isLoading = !!loading && !disabled
 
-  // Animated styles
-  const animatedStyle = useAnimatedStyle(() => {
-    return {
-      transform: [{ scale: scale.value }],
-      opacity: opacity.value,
-    };
-  });
+  const base: ViewStyle = {
+    minHeight,
+    borderRadius: semantic.radii.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    paddingHorizontal: size === 'lg' ? semantic.spacing.xl : size === 'sm' ? semantic.spacing.md : semantic.spacing.lg,
+    paddingVertical: size === 'lg' ? semantic.spacing.lg : size === 'sm' ? semantic.spacing.sm : semantic.spacing.md,
+    borderWidth: variant === 'outline' ? 1 : 0,
+    borderColor: variant === 'outline' ? (disabled ? semantic.colors.interactive.disabled : semantic.colors.accent.primary) : 'transparent',
+    opacity: disabled || loading || !onPress ? 0.6 : 1,
+  }
 
-  // Handle press in
-  const handlePressIn = () => {
-    try {
-      if (!disabled && !loading) {
-        scale.value = withTiming(0.98, { duration: theme.animation.duration.fast });
-        opacity.value = withTiming(0.9, { duration: theme.animation.duration.fast });
-      }
-    } catch (error) {
-      console.error('Button press in error:', error);
-    }
-  };
+  const backgroundColor = (() => {
+    if (variant === 'primary') return semantic.colors.accent.primary
+    if (variant === 'secondary') return semantic.colors.background.surface
+    return 'transparent'
+  })()
 
-  // Handle press out
-  const handlePressOut = () => {
-    try {
-      if (!disabled && !loading) {
-        scale.value = withTiming(1, { duration: theme.animation.duration.fast });
-        opacity.value = withTiming(1, { duration: theme.animation.duration.fast });
-      }
-    } catch (error) {
-      console.error('Button press out error:', error);
-    }
-  };
+  const textColor = (() => {
+    if (variant === 'primary') return semantic.colors.text.inverse
+    if (variant === 'outline') return semantic.colors.accent.primary
+    return semantic.colors.text.primary
+  })()
 
-  // Get button styles based on variant and size
-  const getButtonStyle = (): ViewStyle => {
-    const baseStyle = buttonStyles.base;
-    const variantStyle = buttonStyles[variant as ButtonVariant];
-    const sizeStyle = getSizeStyle(size as ButtonSize);
-    const stateStyle = disabled ? buttonStyles.disabled : {};
-    const widthStyle = fullWidth ? { width: '100%' as const } : {};
+  const textStyle: TextStyle = {
+    color: textColor as any,
+    fontFamily: semantic.type.family.primary,
+    fontWeight: semantic.type.weight.semibold as any,
+    fontSize: size === 'lg' ? theme.typography.fontSize.bodyStrong : size === 'sm' ? theme.typography.fontSize.caption : theme.typography.fontSize.body,
+    marginLeft: leftIcon ? semantic.spacing.sm : 0,
+    marginRight: rightIcon ? semantic.spacing.sm : 0,
+  }
 
-    return {
-      ...baseStyle,
-      ...variantStyle,
-      ...sizeStyle,
-      ...stateStyle,
-      ...widthStyle,
-    };
-  };
+  const pressedStyle: ViewStyle = variant === 'primary'
+    ? { backgroundColor: semantic.colors.accent.primaryPressed as any }
+    : variant === 'secondary'
+      ? { backgroundColor: semantic.colors.interactive.fillPressed as any }
+      : { opacity: 0.9 }
 
-  // Get text styles based on variant and size
-  const getTextStyle = (): TextStyle => {
-    const baseTextStyle = getBaseTextStyle(variant as ButtonVariant);
-    const sizeTextStyle = getSizeTextStyle(size as ButtonSize);
-    const stateTextStyle = disabled ? { opacity: 0.5 } : {};
+  const spinnerSize = size === 'sm' ? theme.iconSizes.sm : theme.iconSizes.md
+  const spinnerColor = (() => {
+    if (variant === 'primary') return semantic.colors.text.onAccent as any
+    if ((variant as any) === 'danger') return semantic.colors.state.onDanger as any
+    return semantic.colors.accent.primary as any
+  })()
 
-    return {
-      ...baseTextStyle,
-      ...sizeTextStyle,
-      ...stateTextStyle,
-    };
-  };
-
-  // Get size-specific styles
-  const getSizeStyle = (buttonSize: ButtonSize): ViewStyle => {
-    switch (buttonSize) {
-      case 'sm':
-        return {
-          paddingHorizontal: theme.spacing.md,
-          paddingVertical: theme.spacing.sm,
-          minHeight: 36,
-        };
-      case 'lg':
-        return {
-          paddingHorizontal: theme.spacing.xl,
-          paddingVertical: theme.spacing.lg,
-          minHeight: 56,
-        };
-      default: // md
-        return {
-          paddingHorizontal: theme.spacing.lg,
-          paddingVertical: theme.spacing.md,
-          minHeight: 44,
-        };
-    }
-  };
-
-  // Get size-specific text styles
-  const getSizeTextStyle = (buttonSize: ButtonSize): TextStyle => {
-    switch (buttonSize) {
-      case 'sm':
-        return {
-          fontSize: theme.typography.fontSize.body,
-        };
-      case 'lg':
-        return {
-          fontSize: theme.typography.fontSize.bodyStrong,
-        };
-      default: // md
-        return {
-          fontSize: theme.typography.fontSize.body,
-        };
-    }
-  };
-
-  // Get base text style based on variant
-  const getBaseTextStyle = (buttonVariant: ButtonVariant): TextStyle => {
-    switch (buttonVariant) {
-      case 'primary':
-        return {
-          color: theme.colors.text.inverse,
-          fontWeight: theme.typography.fontWeight.semibold,
-        };
-      case 'secondary':
-        return {
-          color: theme.colors.text.primary,
-          fontWeight: theme.typography.fontWeight.semibold,
-        };
-      case 'outline':
-        return {
-          color: theme.colors.primary,
-          fontWeight: theme.typography.fontWeight.semibold,
-        };
-      case 'ghost':
-        return {
-          color: theme.colors.primary,
-          fontWeight: theme.typography.fontWeight.semibold,
-        };
-      default:
-        return {
-          color: theme.colors.text.primary,
-          fontWeight: theme.typography.fontWeight.semibold,
-        };
-    }
-  };
-
-  // Determine accessibility role
-  const getAccessibilityRole = (): AccessibilityRole => {
-    return 'button';
-  };
+  const [focused, setFocused] = React.useState(false)
 
   return (
-    <Animated.View style={[animatedStyle, fullWidth && { width: '100%' }]}>
-      <TouchableOpacity
-        style={[getButtonStyle(), style]}
-        onPress={onPress}
-        onPressIn={handlePressIn}
-        onPressOut={handlePressOut}
-        disabled={disabled || loading}
-        activeOpacity={1}
-        hitSlop={hitSlop4}
-        accessibilityRole={getAccessibilityRole()}
-        accessibilityLabel={accessibilityLabel || title}
-        accessibilityHint={accessibilityHint}
-        accessibilityState={{ disabled: disabled || loading }}
-        accessibilityLiveRegion="polite"
-      >
-        {loading ? (
-          <ActivityIndicator
-            size="small"
-            color={variant === 'primary' ? theme.colors.text.inverse : theme.colors.primary}
-          />
-        ) : (
-          <>
-            {leftIcon && (
-              <Animated.View style={styles.leftIcon}>
-                {leftIcon}
-              </Animated.View>
-            )}
-            <Text style={[getTextStyle(), textStyle]}>{title}</Text>
-            {rightIcon && (
-              <Animated.View style={styles.rightIcon}>
-                {rightIcon}
-              </Animated.View>
-            )}
-          </>
-        )}
-      </TouchableOpacity>
-    </Animated.View>
-  );
-});
+    <Pressable
+      accessibilityRole="button"
+      accessibilityState={{ disabled: !!(disabled || loading || !onPress), busy: !!loading }}
+      accessibilityLabel={accessibilityLabel ?? title}
+      onPress={(e) => {
+        if (disabled || loading || !onPress) return
+        onPress?.(e)
+      }}
+      onFocus={() => setFocused(true)}
+      onBlur={() => setFocused(false)}
+      testID={testID || (variant === 'primary' ? 'button.primary' : variant === 'secondary' ? 'button.secondary' : `button.${variant}`)}
+      style={({ pressed }) => [
+        base,
+        { backgroundColor: backgroundColor as any },
+        focused && { borderWidth: Math.max(base.borderWidth || 1, 2), borderColor: semantic.colors.focus.ring as any },
+        pressed && !disabled && !isLoading && pressedStyle,
+        style,
+      ]}
+      disabled={!!(disabled || loading || !onPress)}
+      pointerEvents={isLoading ? 'none' : 'auto'}
+    >
+      <View style={{ flexDirection: 'row', alignItems: 'center', opacity: isLoading ? 0 : 1 }}>
+        {leftIcon}
+        <Text style={textStyle}>{title}</Text>
+        {rightIcon}
+      </View>
+      {isLoading && (
+        <ActivityIndicator testID="button.spinner" size={spinnerSize} color={spinnerColor} />
+      )}
+    </Pressable>
+  )
+}
 
-// Styles
-const styles = StyleSheet.create({
-  leftIcon: {
-    marginRight: theme.spacing.sm,
-  },
-  rightIcon: {
-    marginLeft: theme.spacing.sm,
-  },
-});
-
-// Export button variants as separate components for convenience
-export const PrimaryButton: React.FC<Omit<ButtonProps, 'variant'>> = (props) => (
-  <Button {...props} variant="primary" />
-);
-
-export const SecondaryButton: React.FC<Omit<ButtonProps, 'variant'>> = (props) => (
-  <Button {...props} variant="secondary" />
-);
-
-export const OutlineButton: React.FC<Omit<ButtonProps, 'variant'>> = (props) => (
-  <Button {...props} variant="outline" />
-);
-
-export const GhostButton: React.FC<Omit<ButtonProps, 'variant'>> = (props) => (
-  <Button {...props} variant="ghost" />
-);
-
-// Add display names for debugging
-Button.displayName = 'Button';
-PrimaryButton.displayName = 'PrimaryButton';
-SecondaryButton.displayName = 'SecondaryButton';
-OutlineButton.displayName = 'OutlineButton';
-GhostButton.displayName = 'GhostButton';
+export const PrimaryButton = (props: Omit<ButtonProps, 'variant'>) => <Button {...props} variant="primary" />
+export const SecondaryButton = (props: Omit<ButtonProps, 'variant'>) => <Button {...props} variant="secondary" />
+export const OutlineButton = (props: Omit<ButtonProps, 'variant'>) => <Button {...props} variant="outline" />
+export const GhostButton = (props: Omit<ButtonProps, 'variant'>) => <Button {...props} variant="ghost" />

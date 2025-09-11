@@ -1,20 +1,34 @@
 name: CI
-
 on:
   push:
     branches: [ main ]
   pull_request:
-
 jobs:
   build:
     runs-on: ubuntu-latest
+    # All steps run inside this subfolder
+    defaults:
+      run:
+        working-directory: expo-supabase-mobile-starter
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Node
+        uses: actions/setup-node@v4
         with:
           node-version: '20'
           cache: 'npm'
-      - run: npm ci
-      - run: npm run typecheck
-      - run: npm run lint
-      - run: npm test
+          cache-dependency-path: expo-supabase-mobile-starter/package-lock.json
+      - name: Install deps
+        run: npm ci
+      - name: Theme import guard
+        # If your script is named differently, swap to `npm run lint:theme`
+        run: npm run check:theme-imports
+      - name: Lint
+        run: npm run lint
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Unit tests
+        run: npm test
+        env:
+          CI: true

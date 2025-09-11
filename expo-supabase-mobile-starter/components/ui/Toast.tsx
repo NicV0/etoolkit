@@ -6,8 +6,9 @@ import {
   Animated,
   TouchableOpacity,
   Dimensions,
+  AccessibilityInfo,
 } from 'react-native';
-import { colors } from '../../lib/theme/tokens';
+import { theme } from '../../lib/theme/tokens';
 
 export type ToastType = 'success' | 'error' | 'warning' | 'info';
 
@@ -20,6 +21,10 @@ interface ToastProps {
 }
 
 const { width: screenWidth } = Dimensions.get('window');
+
+let lastAnnounce = 0;
+let lastMessage = '';
+
 
 export const Toast: React.FC<ToastProps> = ({
   message,
@@ -52,11 +57,23 @@ export const Toast: React.FC<ToastProps> = ({
         hideToast();
       }, duration);
 
+      // SR announcement (debounced, deduped, message-only)
+      const now = Date.now();
+      if (now - lastAnnounce > 500 && message !== lastMessage) {
+        AccessibilityInfo.isScreenReaderEnabled?.().then((enabled) => {
+          if (enabled) {
+            AccessibilityInfo.announceForAccessibility?.(message);
+            lastAnnounce = Date.now();
+            lastMessage = message;
+          }
+        }).catch(() => {});
+      }
+
       return () => clearTimeout(timer);
     } else {
       hideToast();
     }
-  }, [visible, duration]);
+  }, [visible, duration, message]);
 
   const hideToast = () => {
     Animated.parallel([
@@ -79,24 +96,24 @@ export const Toast: React.FC<ToastProps> = ({
     switch (type) {
       case 'success':
         return {
-          backgroundColor: '#d1fae5',
-          borderColor: '#10b981',
+          backgroundColor: theme.semantic.colors.overlay.card,
+          borderColor: theme.semantic.colors.state.success,
         };
       case 'error':
         return {
-          backgroundColor: '#fee2e2',
-          borderColor: '#ef4444',
+          backgroundColor: theme.semantic.colors.overlay.card,
+          borderColor: theme.semantic.colors.state.danger,
         };
       case 'warning':
         return {
-          backgroundColor: '#fef3c7',
-          borderColor: '#f59e0b',
+          backgroundColor: theme.semantic.colors.overlay.card,
+          borderColor: theme.semantic.colors.state.warning,
         };
       case 'info':
       default:
         return {
-          backgroundColor: '#dbeafe',
-          borderColor: '#3b82f6',
+          backgroundColor: theme.semantic.colors.overlay.card,
+          borderColor: theme.semantic.colors.state.info,
         };
     }
   };
@@ -104,14 +121,14 @@ export const Toast: React.FC<ToastProps> = ({
   const getTextColor = (): string => {
     switch (type) {
       case 'success':
-        return '#065f46';
+        return theme.semantic.colors.text.primary;
       case 'error':
-        return '#991b1b';
+        return theme.semantic.colors.text.primary;
       case 'warning':
-        return '#92400e';
+        return theme.semantic.colors.text.primary;
       case 'info':
       default:
-        return '#1e40af';
+        return theme.semantic.colors.text.primary;
     }
   };
 
@@ -133,6 +150,9 @@ export const Toast: React.FC<ToastProps> = ({
 
   return (
     <Animated.View
+      testID="toast.container"
+      accessibilityLiveRegion="polite"
+      accessibilityLabel={`Notification: ${message}`}
       style={[
         styles.container,
         {
@@ -146,7 +166,7 @@ export const Toast: React.FC<ToastProps> = ({
         <Text style={[styles.icon, { color: getTextColor() }]}>
           {getIcon()}
         </Text>
-        <Text style={[styles.message, { color: getTextColor() }]}>
+        <Text testID="toast.message" style={[styles.message, { color: getTextColor() }]}>
           {message}
         </Text>
         <TouchableOpacity onPress={hideToast} style={styles.closeButton}>
@@ -160,43 +180,36 @@ export const Toast: React.FC<ToastProps> = ({
 const styles = StyleSheet.create({
   container: {
     position: 'absolute',
-    top: 50,
-    left: 16,
-    right: 16,
-    zIndex: 1000,
-    borderRadius: 8,
+    top: theme.semantic.spacing.lg,
+    left: theme.semantic.spacing.md,
+    right: theme.semantic.spacing.md,
+    zIndex: theme.zIndex.toast,
+    borderRadius: theme.semantic.radii.md,
     borderWidth: 1,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    elevation: 5,
+    ...theme.semantic.shadows.popover,
   },
   content: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 16,
+    padding: theme.semantic.spacing.md,
   },
   icon: {
-    fontSize: 18,
-    marginRight: 12,
-    fontWeight: 'bold',
+    fontSize: theme.typography.fontSize.body,
+    marginRight: theme.semantic.spacing.sm,
+    fontWeight: theme.typography.fontWeight.bold as any,
   },
   message: {
     flex: 1,
-    fontSize: 16,
-    fontWeight: '500',
+    fontSize: theme.typography.fontSize.body,
+    fontWeight: theme.typography.fontWeight.medium as any,
   },
   closeButton: {
-    marginLeft: 12,
-    padding: 4,
+    marginLeft: theme.semantic.spacing.sm,
+    padding: theme.semantic.spacing.xs,
   },
   closeText: {
-    fontSize: 16,
-    fontWeight: 'bold',
+    fontSize: theme.typography.fontSize.body,
+    fontWeight: theme.typography.fontWeight.bold as any,
   },
 });
 

@@ -2,7 +2,7 @@ import React, { useMemo } from 'react';
 import { ScrollView, Text, View, Alert } from 'react-native';
 import { Header } from '../../../components/layout/Header';
 import { theme } from '../../../lib/theme/tokens';
-import { Button } from '../../../components/ui/Button';
+import Button from '../../../components/ui/Button';
 import { useLocalSearchParams } from 'expo-router';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';

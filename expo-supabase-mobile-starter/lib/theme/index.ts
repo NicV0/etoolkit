@@ -1,3 +1,18 @@
+/*
+DEPRECATED – DO NOT USE
+
+This module is deprecated. The single source of truth for theme tokens is:
+  lib/theme/tokens.ts
+
+Non-negotiables:
+- Do not import from this file. Use tokens.ts instead
+- No inline hex colors or one-off spacing/typography
+- Components must use semantic aliases defined in FRONTEND_PLAN_V2.mdThis file remains temporarily for history and will be removed when light theme lands.
+*/
+
+// Hard fail on import to prevent accidental usage
+throw new Error('DEPRECATED – Do not import lib/theme/index.ts. Use lib/theme/tokens.ts instead.');
+
 // Comprehensive theme system based on mobile-app patterns
 import { colors } from './tokens';
 

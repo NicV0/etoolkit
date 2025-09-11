@@ -48,9 +48,9 @@ module.exports = {
         jsx: 'react-jsx',
       },
     },
-  },
-  moduleNameMapper: {
+  },moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/$1',
+    '^@theme/tokens$': '<rootDir>/expo-supabase-mobile-starter/lib/theme/tokens',
   },
   testTimeout: 10000,
 };

@@ -1,33 +1,17 @@
 import React from 'react';
-import { Platform, View, Text, TouchableOpacity } from 'react-native';
-import { BlurView } from 'expo-blur';
-import { theme } from '../../lib/theme/tokens';
-import { Settings } from 'lucide-react-native';
-import { Link } from 'expo-router';
+import { View, Text } from 'react-native';
+import { colors } from '../../lib/theme/tokens';
 
-export function Header({ title, showSettings=false }: { title: string; showSettings?: boolean }) {
-  const Content = (
-    <View className="flex-row items-center justify-between px-4 py-3">
-      <Text style={{ color: theme.colors.text.primary, fontFamily: 'Inter_700Bold', fontSize: 28 }}>{title}</Text>
-      {showSettings ? (
-        <Link href="/(tabs)/dashboard/settings" asChild>
-          <TouchableOpacity accessibilityRole="button">
-            <Settings color={theme.colors.text.primary} size={22} />
-          </TouchableOpacity>
-        </Link>
-      ) : <View />}
-    </View>
-  );
-  if (Platform.OS === 'ios') {
-    return (
-      <BlurView intensity={24} tint="dark" className="w-full">
-        <View style={{ borderBottomColor: theme.colors.border, borderBottomWidth: 1 }}>{Content}</View>
-      </BlurView>
-    );
-  }
+export function Header({ title, subtitle }: { title: string; subtitle?: string }) {
   return (
-    <View style={{ backgroundColor: theme.colors.surface, borderBottomColor: theme.colors.border, borderBottomWidth: 1 }}>
-      {Content}
+    <View style={{ paddingHorizontal: 16, paddingTop: 12, paddingBottom: 6 }}>
+      <Text style={{ color: colors.text.primary, fontFamily: 'Inter_800ExtraBold', fontSize: 32 }}>
+        {title}
+      </Text>
+      {subtitle ? (
+        <Text style={{ color: colors.text.secondary, marginTop: 6 }}>{subtitle}</Text>
+      ) : null}
     </View>
   );
 }
+export default Header;

@@ -1,302 +1,175 @@
-import React, { useState, forwardRef } from 'react';
-import {
-  TextInput,
-  View,
-  Text,
-  StyleSheet,
-  ViewStyle,
-  TextStyle,
-  TextInputProps,
-  AccessibilityRole,
-  NativeSyntheticEvent,
-  TextInputFocusEventData,
-} from 'react-native';
+import React from 'react';
+import { TextInput, View, Text, ViewStyle } from 'react-native';
 import { theme } from '../../lib/theme/tokens';
-import { inputStyles, textStyles } from '../../lib/theme/utils';
 
-// Input variants
-export type InputVariant = 'default' | 'filled' | 'outlined';
-
-// Input sizes
-export type InputSize = 'sm' | 'md' | 'lg';
-
-// Input props interface
-export interface InputProps extends Omit<TextInputProps, 'style'> {
-  // Content
+export type InputProps = {
+  /**
+   * A label displayed above the input. If undefined no label is shown.
+   */
   label?: string;
+  /**
+   * Current value of the text input. Must be controlled by the parent.
+   */
+  value: string;
+  /**
+   * Change handler called whenever the text changes.
+   */
+  onChangeText: (text: string) => void;
+  /**
+   * Placeholder text shown when value is empty.
+   */
   placeholder?: string;
-  value?: string;
-  onChangeText?: (text: string) => void;
-  
-  // Variants
-  variant?: InputVariant;
-  size?: InputSize;
-  
-  // States
-  error?: string;
+  /**
+   * Keyboard type hint. Defaults to 'default'.
+   */
+  keyboardType?: 'default' | 'email-address' | 'numeric' | 'phone-pad' | 'url';
+  /**
+   * The return key type hint. Defaults to 'next'.
+   */
+  returnKeyType?: 'done' | 'next' | 'send' | 'search';
+  /**
+   * Hides the text input contents for sensitive fields. Defaults to false.
+   */
+  secureTextEntry?: boolean;
+  /**
+   * Disables the input when true.
+   */
   disabled?: boolean;
-  required?: boolean;
-  
-  // Styling
+  /**
+   * Shows an error state when true.
+   */
+  error?: boolean;
+  /**
+   * Error message to display below the input.
+   */
+  errorMessage?: string;
+  /**
+   * Style overrides for the container.
+   */
   style?: ViewStyle;
-  inputStyle?: TextStyle;
-  labelStyle?: TextStyle;
-  errorStyle?: TextStyle;
-  
-  // Icons
-  leftIcon?: React.ReactNode;
-  rightIcon?: React.ReactNode;
-  
-  // Accessibility
+  /** Test IDs for e2e */
+  testID?: string;
+  inputTestID?: string;
+  /**
+   * Style overrides for the input field.
+   */
+  inputStyle?: ViewStyle;
+  /**
+   * Optional accessibility label. If omitted the label is used.
+   */
   accessibilityLabel?: string;
-  accessibilityHint?: string;
-  
-  // Other
-  fullWidth?: boolean;
-  multiline?: boolean;
-  numberOfLines?: number;
-}
+  /**
+   * Auto-capitalize behavior. Defaults to 'sentences'.
+   */
+  autoCapitalize?: 'none' | 'sentences' | 'words' | 'characters';
+  /**
+   * Auto-correct behavior. Defaults to true.
+   */
+  autoCorrect?: boolean;
+  /**
+   * Auto-complete behavior.
+   */
+  autoComplete?: 'off' | 'username' | 'password' | 'email' | 'name' | 'tel' | 'street-address' | 'postal-code' | 'cc-number' | 'cc-csc' | 'cc-exp' | 'cc-exp-month' | 'cc-exp-year';
+};
 
-// Input component
-export const Input = React.memo(forwardRef<TextInput, InputProps>(({
+export default function Input({
   label,
-  placeholder,
   value,
   onChangeText,
-  variant = 'default',
-  size = 'md',
-  error,
+  placeholder,
+  keyboardType = 'default',
+  returnKeyType = 'next',
+  secureTextEntry = false,
   disabled = false,
-  required = false,
+  error = false,
+  errorMessage,
   style,
   inputStyle,
-  labelStyle,
-  errorStyle,
-  leftIcon,
-  rightIcon,
   accessibilityLabel,
-  accessibilityHint,
-  fullWidth = false,
-  multiline = false,
-  numberOfLines = 1,
-  ...textInputProps
-}, ref) => {
-  const [isFocused, setIsFocused] = useState(false);
-
-  // Handle focus
-  const handleFocus = (e: NativeSyntheticEvent<TextInputFocusEventData>) => {
-    setIsFocused(true);
-    textInputProps.onFocus?.(e);
+  autoCapitalize = 'sentences',
+  autoCorrect = true,
+  autoComplete,
+testID,
+  inputTestID,
+}: InputProps) {
+  const getBorderColor = () => {
+    if (error) return theme.semantic.colors.state.danger;
+    if (disabled) return theme.semantic.colors.border.subtle;
+    return theme.semantic.colors.border.subtle;
   };
 
-  // Handle blur
-  const handleBlur = (e: NativeSyntheticEvent<TextInputFocusEventData>) => {
-    setIsFocused(false);
-    textInputProps.onBlur?.(e);
+  const getBackgroundColor = () => {
+    if (disabled) return theme.semantic.colors.interactive.disabled;
+    return theme.semantic.colors.input.background;
   };
 
-  // Get container styles
-  const getContainerStyle = (): ViewStyle => {
-    const baseStyle = inputStyles.base;
-    const variantStyle = getVariantStyle(variant);
-    const sizeStyle = getSizeStyle(size);
-    const stateStyle = getStateStyle();
-    const widthStyle = fullWidth ? { width: '100%' as const } : {};
-
-    return {
-      ...baseStyle,
-      ...variantStyle,
-      ...sizeStyle,
-      ...stateStyle,
-      ...widthStyle,
-    };
-  };
-
-  // Get variant-specific styles
-  const getVariantStyle = (inputVariant: InputVariant): ViewStyle => {
-    switch (inputVariant) {
-      case 'filled':
-        return {
-          backgroundColor: theme.colors.surface,
-          borderWidth: 0,
-        };
-      case 'outlined':
-        return {
-          backgroundColor: 'transparent',
-          borderWidth: 1,
-          borderColor: theme.colors.border,
-        };
-      default:
-        return {};
-    }
-  };
-
-  // Get size-specific styles
-  const getSizeStyle = (inputSize: InputSize): ViewStyle => {
-    switch (inputSize) {
-      case 'sm':
-        return {
-          paddingHorizontal: theme.spacing.sm,
-          paddingVertical: theme.spacing.sm,
-          minHeight: 36,
-        };
-      case 'lg':
-        return {
-          paddingHorizontal: theme.spacing.lg,
-          paddingVertical: theme.spacing.lg,
-          minHeight: 56,
-        };
-      default: // md
-        return {
-          paddingHorizontal: theme.spacing.md,
-          paddingVertical: theme.spacing.md,
-          minHeight: 44,
-        };
-    }
-  };
-
-  // Get state-specific styles
-  const getStateStyle = (): ViewStyle => {
-    if (disabled) {
-      return inputStyles.disabled;
-    }
-    if (error) {
-      return inputStyles.error;
-    }
-    if (isFocused) {
-      return inputStyles.focused;
-    }
-    return {};
-  };
-
-  // Get input styles
-  const getInputStyle = (): TextStyle => {
-    const baseStyle = {
-      fontSize: theme.typography.fontSize.body,
-      color: theme.colors.text.primary,
-      flex: 1,
-    };
-
-    if (multiline) {
-      return {
-        ...baseStyle,
-        textAlignVertical: 'top',
-        minHeight: numberOfLines * 20,
-      };
-    }
-
-    return baseStyle;
-  };
-
-  // Get label styles
-  const getLabelStyle = (): TextStyle => {
-    return {
-      ...textStyles.bodyStrong,
-      marginBottom: theme.spacing.xs,
-    };
-  };
-
-  // Get error styles
-  const getErrorStyle = (): TextStyle => {
-    return {
-      ...textStyles.caption,
-      color: theme.colors.error,
-      marginTop: theme.spacing.xs,
-    };
-  };
-
-  // Determine accessibility role
-  const getAccessibilityRole = (): AccessibilityRole => {
-    return 'text';
+  const getTextColor = () => {
+    if (disabled) return theme.semantic.colors.text.muted;
+    return theme.semantic.colors.text.primary;
   };
 
   return (
-    <View style={[styles.container, style]}>
-      {/* Label */}
+    <View style={[{ marginBottom: theme.semantic.spacing.md }, style]} testID={testID}>
       {label && (
-        <Text style={[getLabelStyle(), labelStyle]}>
+        <Text
+          style={{
+            color: theme.semantic.colors.text.primary,
+            marginBottom: theme.semantic.spacing.sm,
+            fontSize: theme.semantic.type.body,
+            fontWeight: theme.semantic.type.weight.medium,
+          }}
+        >
           {label}
-          {required && <Text style={styles.required}> *</Text>}
         </Text>
       )}
-
-      {/* Input Container */}
-      <View style={[styles.inputContainer, getContainerStyle()]}>
-        {/* Left Icon */}
-        {leftIcon && (
-          <View style={styles.leftIcon}>
-            {leftIcon}
-          </View>
-        )}
-
-        {/* Text Input */}
-        <TextInput
-          ref={ref}
-          style={[getInputStyle(), inputStyle]}
-          placeholder={placeholder}
-          placeholderTextColor={theme.colors.text.muted}
-          value={value}
-          onChangeText={onChangeText}
-          onFocus={handleFocus}
-          onBlur={handleBlur}
-          editable={!disabled}
-          multiline={multiline}
-          numberOfLines={multiline ? numberOfLines : undefined}
-          accessibilityRole={getAccessibilityRole()}
-          accessibilityLabel={accessibilityLabel || label}
-          accessibilityHint={accessibilityHint}
-          accessibilityState={{ disabled }}
-          {...textInputProps}
-        />
-
-        {/* Right Icon */}
-        {rightIcon && (
-          <View style={styles.rightIcon}>
-            {rightIcon}
-          </View>
-        )}
-      </View>
-
-      {/* Error Message */}
-      {error && (
-        <Text style={[getErrorStyle(), errorStyle]}>
-          {error}
+      <TextInput
+        value={value}
+        onChangeText={onChangeText}
+        placeholder={placeholder}
+        placeholderTextColor={theme.semantic.colors.text.muted}
+        keyboardType={keyboardType}
+        returnKeyType={returnKeyType}
+        secureTextEntry={secureTextEntry}
+        editable={!disabled}
+        autoCapitalize={autoCapitalize}
+        autoCorrect={autoCorrect}
+        autoComplete={autoComplete}
+        style={[
+          {
+            backgroundColor: getBackgroundColor(),
+            color: getTextColor(),
+            paddingVertical: theme.semantic.spacing.sm,
+            paddingHorizontal: theme.semantic.spacing.md,
+            borderRadius: theme.semantic.radii.md,
+            fontSize: theme.semantic.type.body,
+            borderWidth: 1,
+            borderColor: getBorderColor(),
+          },
+          inputStyle,
+        ]}
+        accessibilityLabel={accessibilityLabel ?? label}
+        testID={inputTestID}
+      />
+      {error && errorMessage && (
+        <Text
+          style={{
+            color: theme.semantic.colors.state.danger,
+            fontSize: theme.semantic.type.meta,
+            marginTop: theme.semantic.spacing.xs,
+          }}
+        >
+          {errorMessage}
         </Text>
       )}
     </View>
   );
-}));
+}
 
-// Styles
-const styles = StyleSheet.create({
-  container: {
-    marginBottom: theme.spacing.md,
-  },
-  inputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  leftIcon: {
-    marginRight: theme.spacing.sm,
-  },
-  rightIcon: {
-    marginLeft: theme.spacing.sm,
-  },
-  required: {
-    color: theme.colors.error,
-  },
-});
+// Convenience components for common variants
+export const FilledInput = (props: Omit<InputProps, 'variant'>) => (
+  <Input {...props} />
+);
 
-// Export input variants as separate components for convenience
-export const FilledInput = forwardRef<TextInput, Omit<InputProps, 'variant'>>((props, ref) => (
-  <Input {...props} ref={ref} variant="filled" />
-));
-
-export const OutlinedInput = forwardRef<TextInput, Omit<InputProps, 'variant'>>((props, ref) => (
-  <Input {...props} ref={ref} variant="outlined" />
-));
-
-// Export with display name for debugging
-Input.displayName = 'Input';
-FilledInput.displayName = 'FilledInput';
-OutlinedInput.displayName = 'OutlinedInput';
+export const OutlinedInput = (props: Omit<InputProps, 'variant'>) => (
+  <Input {...props} />
+);

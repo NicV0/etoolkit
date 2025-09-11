@@ -1,543 +1,187 @@
-import React, { useState, useCallback } from 'react';
-import {
-  View,
-  ScrollView,
-  RefreshControl,
-  StyleSheet,
-  Text,
-  Alert,
-} from 'react-native';
-import { router } from 'expo-router';
-import { FileText, Calendar } from 'lucide-react-native';
+import React, { useState } from 'react';
+import { View, Text, FlatList } from 'react-native';
+import { useRouter } from 'expo-router';
+import { Plus } from 'lucide-react-native';
 
 // Components
 import {
-  Card,
+  Screen,
   Button,
+  Card,
   Badge,
-  SearchInput,
-  SkeletonCard,
-  Modal,
-  ModalHeader,
-  ModalContent,
-  ModalFooter,
 } from '../../../components/ui';
 
 // Hooks
-import {
-  useInvoices,
-  useDeleteInvoice,
-} from '../../../lib/query/hooks';
+import { useInvoices, useClients } from '../../../lib/state/simpleStore';
 
 // Theme
 import { theme } from '../../../lib/theme/tokens';
-import { textStyles } from '../../../lib/theme/utils';
 
-// Types
-import { InvoiceWithItems } from '../../../lib/api/invoices';
-import { InvoiceFilters } from '../../../lib/database/types';
+const FILTERS = ['all', 'unpaid', 'overdue', 'paid'] as const;
+type Filter = typeof FILTERS[number];
 
-type Invoice = InvoiceWithItems;
+/**
+ * Billing screen displays invoices with filtering and a button to create
+ * new invoices. Totals for each status are summarised at the top and
+ * each invoice can be marked paid from this list.
+ */
+export default function Billing() {
+  const { invoices, markInvoicePaid } = useInvoices();
+  const { clients } = useClients();
+  const [filter, setFilter] = useState<Filter>('all');
+  const router = useRouter();
 
-// Utils
-import { formatCurrencySafe } from '../../../lib/utils/number';
+  const filtered = invoices.filter(inv => (filter === 'all' ? true : inv.status === filter));
 
-// Invoice card component
-const InvoiceCard: React.FC<{
-  invoice: Invoice;
-  onEdit: (invoice: Invoice) => void;
-  onDelete: (invoice: Invoice) => void;
-}> = ({ invoice, onEdit, onDelete }) => {
-  const handleEdit = useCallback(() => {
-    onEdit(invoice);
-  }, [invoice, onEdit]);
+  const totals = invoices.reduce(
+    (acc, inv) => {
+      acc[inv.status] += inv.total;
+      return acc;
+    },
+    { paid: 0, unpaid: 0, overdue: 0 } as Record<'paid' | 'unpaid' | 'overdue', number>
+  );
 
-  const handleDelete = useCallback(() => {
-    onDelete(invoice);
-  }, [invoice, onDelete]);
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'paid':
-        return 'success';
-      case 'sent':
-        return 'info';
-      case 'overdue':
-        return 'error';
-      case 'draft':
-        return 'warning';
-      default:
-        return 'info';
-    }
-  };
-
-  const formatCurrency = (amount: number) => {
-    return formatCurrencySafe(amount, invoice.currency || 'USD');
-  };
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString();
+  const getClientName = (clientId: string) => {
+    const client = clients.find(c => c.id === clientId);
+    return client?.name || 'Unknown Client';
   };
 
   return (
-    <Card variant="elevated" style={styles.invoiceCard}>
-      <View style={styles.invoiceHeader}>
-        <View style={styles.invoiceInfo}>
-          <View style={styles.invoiceNumberRow}>
-            <Text style={[textStyles.h3, styles.invoiceNumber]}>
-              #{invoice.number}
-            </Text>
-            <Badge variant={getStatusColor(invoice.status) as 'success' | 'info' | 'error' | 'warning'}>
-              {invoice.status}
-            </Badge>
-          </View>
-          <Text style={[textStyles.body, styles.invoiceAmount]}>
-            {formatCurrency(invoice.total)}
-          </Text>
-          {invoice.due_date && (
-            <View style={styles.dueDateRow}>
-              <Calendar size={14} color={theme.colors.text.secondary} />
-              <Text style={[textStyles.caption, styles.dueDate]}>
-                Due: {formatDate(invoice.due_date)}
-              </Text>
-            </View>
-          )}
-        </View>
-        <View style={styles.invoiceActions}>
-          <Button
-            variant="ghost"
-            size="sm"
-            onPress={handleEdit}
-            style={styles.actionButton}
-            title="Edit"
-          />
-          <Button
-            variant="ghost"
-            size="sm"
-            onPress={handleDelete}
-            style={styles.actionButton}
-            title="Delete"
-          />
-        </View>
-      </View>
-    </Card>
-  );
-};
-
-// Empty state component
-const EmptyState: React.FC<{ onAddInvoice: () => void }> = ({ onAddInvoice }) => (
-  <View style={styles.emptyState}>
-    <View style={styles.emptyIcon}>
-      <FileText size={48} color={theme.colors.text.secondary} />
-    </View>
-    <Text style={[textStyles.h2, styles.emptyTitle]}>
-      No invoices yet
-    </Text>
-    <Text style={[textStyles.body, styles.emptySubtitle]}>
-      Get started by creating your first invoice
-    </Text>
-    <Button
-      variant="primary"
-      size="lg"
-      onPress={onAddInvoice}
-      style={styles.emptyButton}
-      title="Create Invoice"
-    />
-  </View>
-);
-
-// Loading skeleton component
-const LoadingSkeleton: React.FC = () => (
-  <View style={styles.skeletonContainer}>
-    {Array.from({ length: 5 }).map((_, index) => (
-      <SkeletonCard key={index} style={styles.skeletonCard} />
-    ))}
-  </View>
-);
-
-// Main Billing screen
-export default function BillingScreen() {
-  // State
-  const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState<'all' | 'draft' | 'sent' | 'paid' | 'overdue'>('all');
-  const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
-  const [showDeleteModal, setShowDeleteModal] = useState(false);
-
-  // Query hooks
-  const filters: InvoiceFilters = {
-    search: searchQuery || undefined,
-    status: statusFilter === 'all' ? undefined : statusFilter,
-  };
-
-  // Convert filters to match the expected type
-  const apiFilters = {
-    ...filters,
-    client_id: filters.client_id?.toString()
-  };
-
-  const {
-    data: invoicesData,
-    isLoading,
-    isError,
-    error,
-    refetch,
-  } = useInvoices('org-id', apiFilters);
-
-  const deleteInvoiceMutation = useDeleteInvoice();
-
-  // Handlers
-  const handleSearch = useCallback((query: string) => {
-    setSearchQuery(query);
-  }, []);
-
-  const handleRefresh = useCallback(async () => {
-    await refetch();
-  }, [refetch]);
-
-  const handleAddInvoice = useCallback(() => {
-    router.push('/billing/new');
-  }, []);
-
-  const handleEditInvoice = useCallback((invoice: Invoice) => {
-    router.push(`/billing/${invoice.id}`);
-  }, []);
-
-  const handleDeleteInvoice = useCallback((invoice: Invoice) => {
-    setSelectedInvoice(invoice);
-    setShowDeleteModal(true);
-  }, []);
-
-  const confirmDelete = useCallback(async () => {
-    if (!selectedInvoice) return;
-
-    try {
-      await deleteInvoiceMutation.mutateAsync(selectedInvoice.id.toString());
-      setShowDeleteModal(false);
-      setSelectedInvoice(null);
-    } catch (error) {
-      Alert.alert('Error', 'Failed to delete invoice. Please try again.');
-    }
-  }, [selectedInvoice, deleteInvoiceMutation]);
-
-  // const _cancelDelete = useCallback(() => {
-  //   setShowDeleteModal(false);
-  //   setSelectedInvoice(null);
-  // }, []);
-
-
-
-  // Error state
-  if (isError) {
-    return (
-      <View style={styles.errorContainer}>
-        <Text style={[textStyles.h2, styles.errorTitle]}>
-          Something went wrong
-        </Text>
-        <Text style={[textStyles.body, styles.errorMessage]}>
-          {error?.message || 'Failed to load invoices'}
+    <Screen testID="screen.billing">
+      <View style={styles.header}>
+        <Text style={styles.title}>
+          Billing
         </Text>
         <Button
-          variant="primary"
-          size="lg"
-          onPress={handleRefresh}
-          style={styles.errorButton}
-          title="Try Again"
+          title="New Invoice"
+          onPress={() => router.push('/(tabs)/billing/new')}
+          leftIcon={<Plus color={theme.colors.text.primary} size={16} />}
         />
       </View>
-    );
-  }
-
-  return (
-    <View style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <View style={styles.headerTop}>
-          <View style={styles.headerLeft}>
-            <Text style={[textStyles.h2, styles.screenTitle]}>
-              Billing
-            </Text>
-            {invoicesData && (
-              <Text style={[textStyles.body, styles.invoiceCount]}>
-                {invoicesData?.length || 0} invoice{(invoicesData?.length || 0) !== 1 ? 's' : ''}
-              </Text>
-            )}
-          </View>
-          <View style={styles.headerRight}>
-            <Button
-              variant="primary"
-              size="sm"
-              onPress={handleAddInvoice}
-              style={styles.addButton}
-              title="New"
-            />
-          </View>
-        </View>
-
-        <View style={styles.filters}>
-          <SearchInput
-            placeholder="Search invoices..."
-            onSearch={handleSearch}
-            style={styles.searchInput}
+      
+      <View style={styles.filters}>
+        {FILTERS.map(f => (
+          <Button
+            key={f}
+            title={f.charAt(0).toUpperCase() + f.slice(1)}
+            onPress={() => setFilter(f)}
+            variant={filter === f ? 'primary' : 'secondary'}
+            style={styles.filterButton}
           />
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.statusFilters}
-          >
-            <Button
-              variant={statusFilter === 'all' ? 'primary' : 'outline'}
-              size="sm"
-              onPress={() => setStatusFilter('all')}
-              style={styles.filterButton}
-              title="All"
-            />
-            <Button
-              variant={statusFilter === 'draft' ? 'primary' : 'outline'}
-              size="sm"
-              onPress={() => setStatusFilter('draft')}
-              style={styles.filterButton}
-              title="Draft"
-            />
-            <Button
-              variant={statusFilter === 'sent' ? 'primary' : 'outline'}
-              size="sm"
-              onPress={() => setStatusFilter('sent')}
-              style={styles.filterButton}
-              title="Sent"
-            />
-            <Button
-              variant={statusFilter === 'paid' ? 'primary' : 'outline'}
-              size="sm"
-              onPress={() => setStatusFilter('paid')}
-              style={styles.filterButton}
-              title="Paid"
-            />
-            <Button
-              variant={statusFilter === 'overdue' ? 'primary' : 'outline'}
-              size="sm"
-              onPress={() => setStatusFilter('overdue')}
-              style={styles.filterButton}
-              title="Overdue"
-            />
-          </ScrollView>
-        </View>
+        ))}
       </View>
-
-      {/* Content */}
-      {isLoading ? (
-        <LoadingSkeleton />
-      ) : invoicesData?.length === 0 ? (
-        <EmptyState onAddInvoice={handleAddInvoice} />
-      ) : (
-        <ScrollView
-          style={styles.scrollView}
-          contentContainerStyle={styles.listContainer}
-          refreshControl={
-            <RefreshControl
-              refreshing={isLoading}
-              onRefresh={handleRefresh}
-              tintColor={theme.colors.primary}
+      
+      {/* Totals strip */}
+      <View style={styles.totals}>
+        <Text style={styles.totalText}>Unpaid: ${totals.unpaid.toFixed(2)}</Text>
+        <Text style={styles.totalText}>Overdue: ${totals.overdue.toFixed(2)}</Text>
+        <Text style={styles.totalText}>Paid: ${totals.paid.toFixed(2)}</Text>
+      </View>
+      
+      <FlatList
+        data={filtered}
+        keyExtractor={item => item.id}
+        renderItem={({ item }) => (
+          <Card style={styles.invoiceCard}>
+            <View style={styles.invoiceHeader}>
+              <Text style={styles.invoiceNumber}>
+                INV-{item.id}
+              </Text>
+              <Badge
+                label={item.status}
+                variant={
+                  item.status === 'paid'
+                    ? 'success'
+                    : item.status === 'overdue'
+                    ? 'error'
+                    : 'warning'
+                }
+              />
+            </View>
+            <Text style={styles.clientName}>
+              {getClientName(item.clientId)}
+            </Text>
+            <Text style={styles.invoiceTotal}>
+              Total ${item.total.toFixed(2)}
+            </Text>
+            <Button
+              title={item.status !== 'paid' ? 'Mark Paid' : 'Paid'}
+              onPress={() => markInvoicePaid(item.id)}
+              disabled={item.status === 'paid'}
+              variant="secondary"
+              style={styles.markPaidButton}
             />
-          }
-        >
-          {invoicesData?.map((invoice) => (
-            <InvoiceCard
-              key={invoice.id}
-              invoice={invoice}
-              onEdit={handleEditInvoice}
-              onDelete={handleDeleteInvoice}
-            />
-          ))}
-        </ScrollView>
-      )}
-
-      {/* Delete Confirmation Modal */}
-      <Modal visible={showDeleteModal} onClose={() => setShowDeleteModal(false)}>
-        <ModalHeader>
-          <Text style={[textStyles.h3, styles.modalTitle]}>Delete Invoice</Text>
-        </ModalHeader>
-        <ModalContent>
-          <Text style={[textStyles.body, styles.modalMessage]}>
-            Are you sure you want to delete invoice #{selectedInvoice?.number}? This action cannot be undone.
+          </Card>
+        )}
+        ListEmptyComponent={
+          <Text style={styles.emptyText}>
+            No invoices
           </Text>
-        </ModalContent>
-        <ModalFooter>
-          <Button
-            variant="outline"
-            size="md"
-            onPress={() => setShowDeleteModal(false)}
-            style={styles.modalButton}
-            title="Cancel"
-          />
-          <Button
-            variant="primary"
-            size="md"
-            onPress={confirmDelete}
-            loading={deleteInvoiceMutation.isPending}
-            style={{ ...styles.modalButton, backgroundColor: theme.colors.error }}
-            title="Delete"
-          />
-        </ModalFooter>
-      </Modal>
-    </View>
+        }
+      />
+    </Screen>
   );
 }
 
-// Styles
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: theme.colors.background,
-  },
+const styles = {
   header: {
-    padding: theme.spacing.lg,
-    backgroundColor: theme.colors.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.border,
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    marginBottom: theme.spacing.lg,
   },
-  headerTop: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: theme.spacing.md,
-  },
-  headerLeft: {
-    flex: 1,
-  },
-  headerRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: theme.spacing.sm,
-  },
-  screenTitle: {
+  title: {
     color: theme.colors.text.primary,
-    marginBottom: theme.spacing.xs,
-  },
-  invoiceCount: {
-    color: theme.colors.text.secondary,
-  },
-
-  addButton: {
-    paddingHorizontal: theme.spacing.sm,
+    fontSize: theme.typography.fontSize.h1,
+    fontWeight: theme.typography.fontWeight.bold,
+    flex: 1,
   },
   filters: {
-    gap: theme.spacing.md,
-  },
-  searchInput: {
-    marginBottom: 0,
-  },
-  statusFilters: {
-    gap: theme.spacing.sm,
+    flexDirection: 'row' as const,
+    marginBottom: theme.spacing.md,
   },
   filterButton: {
     marginRight: theme.spacing.sm,
   },
-  scrollView: {
-    flex: 1,
+  totals: {
+    flexDirection: 'row' as const,
+    justifyContent: 'space-between' as const,
+    marginBottom: theme.spacing.md,
   },
-  listContainer: {
-    padding: theme.spacing.lg,
+  totalText: {
+    color: theme.colors.text.primary,
+    fontSize: theme.typography.fontSize.body,
   },
   invoiceCard: {
     marginBottom: theme.spacing.md,
   },
   invoiceHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-  },
-  invoiceInfo: {
-    flex: 1,
-  },
-  invoiceNumberRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: theme.spacing.sm,
-    marginBottom: theme.spacing.xs,
+    flexDirection: 'row' as const,
+    justifyContent: 'space-between' as const,
+    alignItems: 'center' as const,
+    marginBottom: theme.spacing.sm,
   },
   invoiceNumber: {
     color: theme.colors.text.primary,
-    flex: 1,
+    fontSize: theme.typography.fontSize.section,
+    fontWeight: theme.typography.fontWeight.semibold,
   },
-  invoiceAmount: {
-    color: theme.colors.text.primary,
-    fontWeight: '600',
-    marginBottom: theme.spacing.xs,
-  },
-  dueDateRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: theme.spacing.xs,
-  },
-  dueDate: {
+  clientName: {
     color: theme.colors.text.secondary,
-  },
-  invoiceActions: {
-    flexDirection: 'row',
-    gap: theme.spacing.xs,
-  },
-  actionButton: {
-    paddingHorizontal: theme.spacing.sm,
-  },
-  emptyState: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: theme.spacing.xl,
-  },
-  emptyIcon: {
-    marginBottom: theme.spacing.lg,
-  },
-  emptyTitle: {
-    color: theme.colors.text.primary,
+    fontSize: theme.typography.fontSize.body,
     marginBottom: theme.spacing.sm,
-    textAlign: 'center',
   },
-  emptySubtitle: {
-    color: theme.colors.text.secondary,
-    marginBottom: theme.spacing.xl,
-    textAlign: 'center',
-  },
-  emptyButton: {
-    minWidth: 120,
-  },
-  skeletonContainer: {
-    padding: theme.spacing.lg,
-  },
-  skeletonCard: {
-    marginBottom: theme.spacing.md,
-    height: 120,
-  },
-  errorContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: theme.spacing.xl,
-  },
-  errorTitle: {
+  invoiceTotal: {
     color: theme.colors.text.primary,
+    fontSize: theme.typography.fontSize.body,
     marginBottom: theme.spacing.sm,
-    textAlign: 'center',
   },
-  errorMessage: {
+  markPaidButton: {
+    alignSelf: 'flex-start' as const,
+  },
+  emptyText: {
     color: theme.colors.text.secondary,
-    marginBottom: theme.spacing.xl,
-    textAlign: 'center',
+    fontSize: theme.typography.fontSize.body,
+    marginTop: theme.spacing.lg,
+    textAlign: 'center' as const,
   },
-  errorButton: {
-    minWidth: 120,
-  },
-  
-  // Modal styles
-  modalTitle: {
-    color: theme.colors.text.primary,
-  },
-  modalMessage: {
-    color: theme.colors.text.secondary,
-    lineHeight: 20,
-  },
-  modalButton: {
-    flex: 1,
-    marginHorizontal: theme.spacing.xs,
-  },
-});
+};

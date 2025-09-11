@@ -16,7 +16,15 @@
     "env:check": "ts-node --project tsconfig.scripts.json scripts/verify-env.ts",
     "eas:login": "eas login",
     "eas:init": "eas build:configure",
-    "prestart": "npm run env:check || exit 0"
+    "prestart": "npm run env:check || exit 0",
+    "check:theme-imports": "node scripts/check-disallowed-imports.js",
+    "check:style": "node scripts/check-style-audit.js",
+    "style:audit": "npm run check:style",
+    "style:audit:baseline": "node scripts/check-style-audit.js --write-baseline",
+    "theme:check": "npm run check:theme-imports",
+    "lint:theme": "npm run theme:check && npm run style:audit && eslint .",
+    "f1-verify": "npm run theme:check && npm run style:audit && npm run typecheck && npm test",
+    "asset:splash": "node scripts/generate-splash.js"
   },
   "dependencies": {
     "@expo-google-fonts/inter": "^0.4.1",
@@ -41,6 +49,7 @@
     "expo-image-picker": "^16.1.4",
     "expo-linking": "~7.1.7",
     "expo-notifications": "~0.31.4",
+    "expo-local-authentication": "~14.2.4",
     "expo-print": "~14.1.4",
     "expo-router": "~5.1.5",
     "expo-secure-store": "~14.2.4",
@@ -77,6 +86,7 @@
     "@types/react-native": "~0.73.0",
     "@typescript-eslint/eslint-plugin": "^7.17.0",
     "@typescript-eslint/parser": "^7.17.0",
+    "babel-plugin-module-resolver": "^5.0.0",
     "eas-cli": "^16.17.4",
     "eslint": "^8.56.0",
     "eslint-config-prettier": "^9.1.0",

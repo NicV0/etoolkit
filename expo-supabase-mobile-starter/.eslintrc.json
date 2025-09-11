@@ -4,5 +4,20 @@
   "plugins": ["@typescript-eslint", "react"],
   "extends": ["eslint:recommended", "plugin:react/recommended", "plugin:@typescript-eslint/recommended", "prettier"],
   "settings": { "react": { "version": "detect" } },
-  "env": { "es6": true, "node": true, "jest": true }
+  "env": { "es6": true, "node": true, "jest": true },
+  "rules": {"no-restricted-imports": [
+      "error",
+      {
+        "paths": [
+          { "name": "lib/theme/index", "message": "DEPRECATED – import from lib/theme/tokens instead." },
+          { "name": "../lib/theme/index", "message": "DEPRECATED – import from lib/theme/tokens instead." },
+          { "name": "../../lib/theme/index", "message": "DEPRECATED – import from lib/theme/tokens instead." },
+          { "name": "lib/theme/_deprecated/index", "message": "DEPRECATED – import from lib/theme/tokens instead." },
+          { "name": "../lib/theme/_deprecated/index", "message": "DEPRECATED – import from lib/theme/tokens instead." },
+          { "name": "../../lib/theme/_deprecated/index", "message": "DEPRECATED – import from lib/theme/tokens instead." }
+        ],
+        "patterns": ["**/lib/theme/index", "**/lib/theme/_deprecated/**"]
+      }
+    ]
+  }
 }

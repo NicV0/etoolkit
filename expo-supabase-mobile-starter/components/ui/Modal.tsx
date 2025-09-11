@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+ import React, { useEffect, useRef, useState } from 'react';
 import {
   View,
   StyleSheet,
@@ -6,6 +6,10 @@ import {
   TouchableWithoutFeedback,
   ViewStyle,
   AccessibilityRole,
+  AccessibilityInfo,
+  findNodeHandle,
+  Platform,
+  Pressable,
 } from 'react-native';
 import Animated, {
   useSharedValue,
@@ -14,6 +18,8 @@ import Animated, {
   runOnJS,
 } from 'react-native-reanimated';
 import { theme } from '../../lib/theme/tokens';
+import IconButton from './IconButton';
+import { X } from 'lucide-react-native';
 
 // Modal props interface
 export interface ModalProps {
@@ -35,6 +41,8 @@ export interface ModalProps {
   // Accessibility
   accessibilityLabel?: string;
   accessibilityHint?: string;
+  modalTitle?: string;
+  focusReturnRef?: React.RefObject<any>;
   
   // Other
   fullScreen?: boolean;
@@ -50,6 +58,8 @@ export const Modal: React.FC<ModalProps> = React.memo(({
   closeOnBackdropPress = true,
   accessibilityLabel,
   accessibilityHint,
+  modalTitle,
+  focusReturnRef,
   fullScreen = false,
 }) => {
   // Animation values
@@ -57,11 +67,31 @@ export const Modal: React.FC<ModalProps> = React.memo(({
   const contentScale = useSharedValue(0.8);
   const contentOpacity = useSharedValue(0);
 
+  // A11y
+  const [srEnabled, setSrEnabled] = useState(false);
+  const contentRef = useRef<View>(null);
+  const announceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   // Handle modal open
   const handleOpen = () => {
     backdropOpacity.value = withTiming(1, { duration: theme.animation.duration.normal });
     contentScale.value = withTiming(1, { duration: theme.animation.duration.normal });
     contentOpacity.value = withTiming(1, { duration: theme.animation.duration.normal });
+
+    // Announce politely after layout tick if SR enabled
+    if (announceTimer.current) clearTimeout(announceTimer.current);
+    announceTimer.current = setTimeout(async () => {
+      try {
+        const enabled = await AccessibilityInfo.isScreenReaderEnabled();
+        setSrEnabled(enabled);
+        if (enabled) {
+          const title = modalTitle || 'Dialog opened';
+          AccessibilityInfo.announceForAccessibility?.(title);
+          const node = findNodeHandle(contentRef.current);
+          if (node) AccessibilityInfo.setAccessibilityFocus?.(node);
+        }
+      } catch {}
+    }, 50);
   };
 
   // Handle modal close
@@ -69,7 +99,13 @@ export const Modal: React.FC<ModalProps> = React.memo(({
     backdropOpacity.value = withTiming(0, { duration: theme.animation.duration.normal });
     contentScale.value = withTiming(0.8, { duration: theme.animation.duration.normal });
     contentOpacity.value = withTiming(0, { duration: theme.animation.duration.normal }, () => {
-      runOnJS(onClose)();
+      runOnJS(() => {
+        if (srEnabled) AccessibilityInfo.announceForAccessibility?.('Dialog closed');
+        // return focus
+        const node = focusReturnRef ? findNodeHandle(focusReturnRef.current) : null;
+        if (node) AccessibilityInfo.setAccessibilityFocus?.(node);
+        onClose();
+      })();
     });
   };
 
@@ -95,18 +131,28 @@ export const Modal: React.FC<ModalProps> = React.memo(({
     if (visible) {
       handleOpen();
     } else {
+      if (announceTimer.current) {
+        clearTimeout(announceTimer.current);
+        announceTimer.current = null;
+      }
       handleClose();
     }
+    return () => {
+      if (announceTimer.current) {
+        clearTimeout(announceTimer.current);
+        announceTimer.current = null;
+      }
+    };
   }, [visible]);
 
   // Get modal content styles
   const getModalContentStyle = (): ViewStyle => {
     const baseStyle = {
-      backgroundColor: theme.colors.card,
-      borderRadius: theme.borderRadius.lg,
-      padding: theme.spacing.component.padding,
-      margin: theme.spacing.lg,
-      ...theme.shadows.lg,
+      backgroundColor: theme.semantic.colors.background.surface,
+      borderRadius: theme.semantic.radii.lg,
+      padding: theme.semantic.spacing.md,
+      margin: theme.semantic.spacing.lg,
+      ...theme.semantic.shadows.modal,
     };
 
     if (fullScreen) {
@@ -134,15 +180,31 @@ export const Modal: React.FC<ModalProps> = React.memo(({
       onRequestClose={dismissible ? handleClose : undefined}
       statusBarTranslucent
     >
-      <View style={styles.container}>
+      <View style={styles.container} testID="modal.container">
         {/* Backdrop */}
         <TouchableWithoutFeedback onPress={handleBackdropPress}>
-          <Animated.View style={[styles.backdrop, backdropStyle]} />
-        </TouchableWithoutFeedback>
-
-        {/* Content */}
-        <View style={[styles.contentContainer, fullScreen && styles.fullScreenContainer]}>
           <Animated.View
+            style={[styles.backdrop, backdropStyle]}
+            importantForAccessibility="no-hide-descendants"
+            pointerEvents="auto"
+            testID="modal.backdrop"
+          />        </TouchableWithoutFeedback>
+
+        {/* Content with focus sentinels */}
+        <View style={[styles.contentContainer, fullScreen && styles.fullScreenContainer]}>
+          {/* Focus start sentinel */}
+          <Pressable
+            accessible
+            accessibilityLabel=""
+            onFocus={() => {
+              const node = findNodeHandle(contentRef.current);
+              if (node) AccessibilityInfo.setAccessibilityFocus?.(node);
+            }}
+            style={styles.focusSentinel}
+            importantForAccessibility="yes"
+          />
+          <Animated.View
+            ref={contentRef}
             style={[
               getModalContentStyle(),
               contentAnimatedStyle,
@@ -151,9 +213,24 @@ export const Modal: React.FC<ModalProps> = React.memo(({
             accessibilityRole={getAccessibilityRole()}
             accessibilityLabel={accessibilityLabel}
             accessibilityHint={accessibilityHint}
+            accessibilityViewIsModal={Platform.OS === 'ios'}
+            onAccessibilityEscape={dismissible ? handleClose : undefined}
+            testID="modal.content"
           >
             {children}
           </Animated.View>
+
+          {/* Focus end sentinel */}
+          <Pressable
+            accessible
+            accessibilityLabel=""
+            onFocus={() => {
+              const node = findNodeHandle(contentRef.current);
+              if (node) AccessibilityInfo.setAccessibilityFocus?.(node);
+            }}
+            style={styles.focusSentinel}
+            importantForAccessibility="yes"
+          />
         </View>
       </View>
     </RNModal>
@@ -166,19 +243,22 @@ export const ModalHeader: React.FC<{
   style?: ViewStyle;
   onClose?: () => void;
 }> = ({ children, style, onClose }) => {
+  const closeRef = React.useRef<any>(null);
   return (
     <View style={[styles.header, style]}>
       <View style={styles.headerContent}>
-        {children}
+        <View testID="modal.title">{children}</View>
       </View>
       {onClose && (
-        <TouchableWithoutFeedback onPress={onClose}>
-          <View style={styles.closeButton}>
-            {/* Close icon would go here */}
-            <View style={styles.closeIcon} />
-          </View>
-        </TouchableWithoutFeedback>
-      )}
+        <IconButton
+          ref={closeRef}
+          accessibilityLabel="Close dialog"
+          onPress={onClose}
+          icon={<X color={theme.semantic.colors.text.primary} size={theme.iconSizes.md} />}
+          size="md"
+          variant="ghost"
+          testID="modal.closeButton"
+        />      )}
     </View>
   );
 };
@@ -220,7 +300,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: theme.colors.overlay.backdrop,
+    backgroundColor: theme.semantic.colors.overlay.backdrop,
   },
   contentContainer: {
     flex: 1,
@@ -230,16 +310,16 @@ const styles = StyleSheet.create({
   },
   fullScreenContainer: {
     justifyContent: 'flex-start',
-    paddingTop: 50, // Account for status bar
+    paddingTop: theme.semantic.spacing.xl,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: theme.spacing.lg,
-    paddingBottom: theme.spacing.md,
+    marginBottom: theme.semantic.spacing.lg,
+    paddingBottom: theme.semantic.spacing.md,
     borderBottomWidth: 1,
-    borderBottomColor: theme.colors.border,
+    borderBottomColor: theme.semantic.colors.border.subtle,
   },
   headerContent: {
     flex: 1,
@@ -248,27 +328,33 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: theme.colors.surface,
+    backgroundColor: theme.semantic.colors.background.elevated,
     justifyContent: 'center',
     alignItems: 'center',
   },
   closeIcon: {
     width: 16,
     height: 16,
-    backgroundColor: theme.colors.text.secondary,
+    backgroundColor: theme.semantic.colors.text.secondary,
     borderRadius: 1,
   },
   modalContent: {
     flex: 1,
   },
   footer: {
-    marginTop: theme.spacing.lg,
-    paddingTop: theme.spacing.md,
+    marginTop: theme.semantic.spacing.lg,
+    paddingTop: theme.semantic.spacing.md,
     borderTopWidth: 1,
-    borderTopColor: theme.colors.border,
+    borderTopColor: theme.semantic.colors.border.subtle,
     flexDirection: 'row',
     justifyContent: 'flex-end',
-    gap: theme.spacing.md,
+    gap: theme.semantic.spacing.md,
+  },
+  focusSentinel: {
+    position: 'absolute',
+    width: 1,
+    height: 1,
+    opacity: 0,
   },
 });
 

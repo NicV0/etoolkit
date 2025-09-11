@@ -111,6 +111,56 @@ import { Skeleton, SkeletonText, SkeletonCard } from './ui';
 
 <Skeleton variant="text" lines={3} />
 <SkeletonCard />
+```### SearchBar (primitive)
+Purpose: Consistent, accessible search input using tokens.ts only.
+
+Accessibility
+- Container: accessibilityRole="search"
+- Input: accessibilityLabel (e.g., "Search"), returnKeyType="search"
+- Clear button: accessibilityLabel="Clear search"
+
+Test IDs
+- Wrapper: testID (e.g., "searchbar")
+- Input: inputTestID (e.g., "searchbar.input")
+- Clear: clearButtonTestID (e.g., "searchbar.clear")
+
+Props
+- value: string
+- onChange(text: string)
+- onSubmit?(text: string) — trimmed text when user presses the keyboard "Search"
+- onClear?() — fires when clear is tapped; input becomes ""
+- placeholder?: string
+- allowClear?: boolean (default true)
+- autoFocus?: boolean (default false)
+- maxLength?: number
+- debounceMs?: number | undefined (unspecified = no debounce)
+- testID?, inputTestID?, clearButtonTestID?
+
+Styling
+- Uses tokens.ts semantic aliases only:
+  - input.background, border.subtle, text.primary, text.muted (placeholder), radii.md, spacing.{sm,md}
+  - No hard-coded colors; respects tokens
+
+Keyboard
+- returnKeyType="search" on the TextInput
+
+Behavior
+- Clear button hides when empty; visible when value is non-empty
+
+Example
+```tsx
+import { SearchBar } from './ui';
+
+<SearchBar
+  value={query}
+  onChangeText={setQuery}
+  onSubmit={(t) => doSearch(t)}
+  onClear={() => setQuery('')}
+  placeholder="Search"
+  testID="searchbar"
+  inputTestID="searchbar.input"
+  clearButtonTestID="searchbar.clear"
+/>
 ```
 
 ### SearchInput

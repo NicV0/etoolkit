@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import {
   View,
   ScrollView,
@@ -16,14 +16,19 @@ import {
   Button,
   Input,
   Badge,
+  Select,
 } from '../../../components/ui';
+import LiveRegionProgress from '../../../components/ui/LiveRegionProgress';
+import SignOutRow from './settings/SignOutRow';
 
 // Hooks
-import { useSettingsStore } from '../../../lib/state/store';
+import { useSettingsStore } from '../../../lib/state/simpleStore';
 
 // Theme
-import { theme } from '../../../lib/theme/tokens';
+
+import { theme } from '@theme/tokens';
 import { textStyles } from '../../../lib/theme/utils';
+import { getLockTimeoutSec, setLockTimeoutSec } from '../../../lib/auth/lock';
 
 // Settings section component
 const SettingsSection: React.FC<{
@@ -89,11 +94,13 @@ export default function SettingsScreen() {
     updateNotifications
   } = useSettingsStore();
   const [isLoading, setIsLoading] = useState(false);
+  const [lockTimeout, setLockTimeout] = useState<number>(60);
 
   // Organization settings
   const [orgName, setOrgName] = useState(organization?.name || '');
   const [orgLogo, setOrgLogo] = useState(organization?.logo || '');
-  const [orgAccentColor, setOrgAccentColor] = useState(organization?.accentColor || '#2563EB');
+
+  const [orgAccentColor, setOrgAccentColor] = useState(organization?.accentColor || theme.semantic.colors.accent.primary);
 
   // Business profile
   const [businessAddress, setBusinessAddress] = useState(businessProfile?.address || '');
@@ -176,6 +183,28 @@ export default function SettingsScreen() {
     Alert.alert('Import', 'Import functionality will be implemented in Phase 5');
   }, []);
 
+  const storageUsedPct = 0; // TODO: wire real usage percent when available
+
+  // Load lock timeout on mount
+  useEffect(() => {
+    (async () => {
+      const sec = await getLockTimeoutSec();
+      setLockTimeout(sec);
+    })();
+  }, []);
+
+  const lockOptions = [
+    { label: 'Off', value: 0 },
+    { label: '30s', value: 30 },
+    { label: '60s', value: 60 },
+    { label: '5m', value: 300 },
+  ] as const;
+
+  const handleLockChange = async (v: number) => {
+    setLockTimeout(v);
+    await setLockTimeoutSec(v);
+  };
+
   return (
     <View style={styles.container}>
       {/* Header */}
@@ -185,7 +214,8 @@ export default function SettingsScreen() {
           size="sm"
           onPress={() => router.back()}
           style={styles.backButton}
-          leftIcon={<ArrowLeft size={20} color={theme.colors.text.primary} />}
+
+          leftIcon={<ArrowLeft size={20} color={theme.semantic.colors.text.primary} />}
           title="Back"
         />
         <View style={styles.headerContent}>
@@ -198,12 +228,16 @@ export default function SettingsScreen() {
         </View>
       </View>
 
+      {/* SR-only storage live region */}
+      <LiveRegionProgress label="Storage used" percent={storageUsedPct} thresholds={[80, 90]} minDelta={5} />
+
       {/* Content */}
       <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer}>
         {/* Organization Settings */}
         <SettingsSection
           title="Organization"
-          icon={<Building2 size={20} color={theme.colors.primary} />}
+
+          icon={<Building2 size={20} color={theme.semantic.colors.accent.primary} />}
         >
           <Input
             label="Organization Name"
@@ -223,7 +257,8 @@ export default function SettingsScreen() {
             label="Accent Color"
             value={orgAccentColor}
             onChangeText={setOrgAccentColor}
-            placeholder="Enter hex color (e.g., #2563EB)"
+
+            placeholder="Enter brand color"
             style={styles.input}
           />
         </SettingsSection>
@@ -231,14 +266,14 @@ export default function SettingsScreen() {
         {/* Business Profile */}
         <SettingsSection
           title="Business Profile"
-          icon={<User size={20} color={theme.colors.primary} />}
+
+          icon={<User size={20} color={theme.semantic.colors.accent.primary} />}
         >
           <Input
             label="Business Address"
             value={businessAddress}
             onChangeText={setBusinessAddress}
             placeholder="Enter business address"
-            multiline
             style={styles.input}
           />
           <Input
@@ -262,7 +297,8 @@ export default function SettingsScreen() {
         {/* Defaults */}
         <SettingsSection
           title="Defaults"
-          icon={<FileText size={20} color={theme.colors.primary} />}
+
+          icon={<FileText size={20} color={theme.semantic.colors.accent.primary} />}
         >
           <Input
             label="Default Currency"
@@ -291,7 +327,8 @@ export default function SettingsScreen() {
         {/* Notifications */}
         <SettingsSection
           title="Notifications"
-          icon={<Bell size={20} color={theme.colors.primary} />}
+
+          icon={<Bell size={20} color={theme.semantic.colors.accent.primary} />}
         >
           <SettingsItem
             label="Email Notifications"
@@ -300,8 +337,10 @@ export default function SettingsScreen() {
               <Switch
                 value={emailNotifications}
                 onValueChange={setEmailNotifications}
-                trackColor={{ false: theme.colors.border, true: theme.colors.primary }}
-                thumbColor={emailNotifications ? theme.colors.text.inverse : theme.colors.text.secondary}
+
+
+                trackColor={{ false: theme.semantic.colors.border.subtle, true: theme.semantic.colors.accent.primary }}
+                thumbColor={emailNotifications ? theme.semantic.colors.text.onAccent : theme.semantic.colors.text.secondary}
               />
             }
           />
@@ -312,8 +351,10 @@ export default function SettingsScreen() {
               <Switch
                 value={pushNotifications}
                 onValueChange={setPushNotifications}
-                trackColor={{ false: theme.colors.border, true: theme.colors.primary }}
-                thumbColor={pushNotifications ? theme.colors.text.inverse : theme.colors.text.secondary}
+
+
+                trackColor={{ false: theme.semantic.colors.border.subtle, true: theme.semantic.colors.accent.primary }}
+                thumbColor={pushNotifications ? theme.semantic.colors.text.onAccent : theme.semantic.colors.text.secondary}
               />
             }
           />
@@ -324,8 +365,10 @@ export default function SettingsScreen() {
               <Switch
                 value={invoiceReminders}
                 onValueChange={setInvoiceReminders}
-                trackColor={{ false: theme.colors.border, true: theme.colors.primary }}
-                thumbColor={invoiceReminders ? theme.colors.text.inverse : theme.colors.text.secondary}
+
+
+                trackColor={{ false: theme.semantic.colors.border.subtle, true: theme.semantic.colors.accent.primary }}
+                thumbColor={invoiceReminders ? theme.semantic.colors.text.onAccent : theme.semantic.colors.text.secondary}
               />
             }
           />
@@ -334,7 +377,8 @@ export default function SettingsScreen() {
         {/* Data Management */}
         <SettingsSection
           title="Data Management"
-          icon={<Database size={20} color={theme.colors.primary} />}
+
+          icon={<Database size={20} color={theme.semantic.colors.accent.primary} />}
         >
           <SettingsItem
             label="Auto Backup"
@@ -343,8 +387,10 @@ export default function SettingsScreen() {
               <Switch
                 value={autoBackup}
                 onValueChange={setAutoBackup}
-                trackColor={{ false: theme.colors.border, true: theme.colors.primary }}
-                thumbColor={autoBackup ? theme.colors.text.inverse : theme.colors.text.secondary}
+
+
+                trackColor={{ false: theme.semantic.colors.border.subtle, true: theme.semantic.colors.accent.primary }}
+                thumbColor={autoBackup ? theme.semantic.colors.text.onAccent : theme.semantic.colors.text.secondary}
               />
             }
           />
@@ -355,8 +401,10 @@ export default function SettingsScreen() {
               <Switch
                 value={syncEnabled}
                 onValueChange={setSyncEnabled}
-                trackColor={{ false: theme.colors.border, true: theme.colors.primary }}
-                thumbColor={syncEnabled ? theme.colors.text.inverse : theme.colors.text.secondary}
+
+
+                trackColor={{ false: theme.semantic.colors.border.subtle, true: theme.semantic.colors.accent.primary }}
+                thumbColor={syncEnabled ? theme.semantic.colors.text.onAccent : theme.semantic.colors.text.secondary}
               />
             }
           />
@@ -364,32 +412,33 @@ export default function SettingsScreen() {
             label="Backup Data"
             subtitle="Create a backup of your data"
             onPress={handleBackup}
-            rightElement={<Badge variant="info">Manual</Badge>}
+            rightElement={<Badge label="Manual" variant="info" />}
           />
           <SettingsItem
             label="Restore Data"
             subtitle="Restore from a backup"
             onPress={handleRestore}
-            rightElement={<Badge variant="warning">Caution</Badge>}
+            rightElement={<Badge label="Caution" variant="warning" />}
           />
         </SettingsSection>
 
         {/* Import/Export */}
         <SettingsSection
           title="Import/Export"
-          icon={<Palette size={20} color={theme.colors.primary} />}
+
+          icon={<Palette size={20} color={theme.semantic.colors.accent.primary} />}
         >
           <SettingsItem
             label="Export Data"
             subtitle="Export your data as CSV"
             onPress={handleExport}
-            rightElement={<Badge variant="info">CSV</Badge>}
+            rightElement={<Badge label="CSV" variant="info" />}
           />
           <SettingsItem
             label="Import Data"
             subtitle="Import data from CSV"
             onPress={handleImport}
-            rightElement={<Badge variant="info">CSV</Badge>}
+            rightElement={<Badge label="CSV" variant="info" />}
           />
         </SettingsSection>
 
@@ -404,6 +453,23 @@ export default function SettingsScreen() {
             title="Save Settings"
           />
         </View>
+
+        {/* Security */}
+        <SettingsSection title="Security" icon={<Database size={20} color={theme.semantic.colors.accent.primary} />}>
+          <SettingsItem
+            label="Lock Timeout"
+            subtitle="Require unlock after inactivity"
+            rightElement={
+              <Select
+                value={lockTimeout}
+                onChange={(v) => handleLockChange(v as number)}
+                options={lockOptions as any}
+                placeholder="Select timeout"
+              />
+            }
+          />
+          <SignOutRow />
+        </SettingsSection>
       </ScrollView>
     </View>
   );
@@ -413,49 +479,63 @@ export default function SettingsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.background,
+
+    backgroundColor: theme.semantic.colors.background.base,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: theme.spacing.lg,
-    backgroundColor: theme.colors.surface,
+
+
+    padding: theme.semantic.spacing.lg,
+    backgroundColor: theme.semantic.colors.background.surface,
     borderBottomWidth: 1,
-    borderBottomColor: theme.colors.border,
+
+    borderBottomColor: theme.semantic.colors.border.subtle,
   },
   backButton: {
-    marginRight: theme.spacing.md,
+
+    marginRight: theme.semantic.spacing.md,
   },
   headerContent: {
     flex: 1,
   },
   headerTitle: {
-    color: theme.colors.text.primary,
-    marginBottom: theme.spacing.xs,
+
+
+    color: theme.semantic.colors.text.primary,
+    marginBottom: theme.semantic.spacing.xs,
   },
   headerSubtitle: {
-    color: theme.colors.text.secondary,
+
+    color: theme.semantic.colors.text.secondary,
   },
   content: {
     flex: 1,
   },
   contentContainer: {
-    padding: theme.spacing.lg,
+
+    padding: theme.semantic.spacing.lg,
   },
   sectionCard: {
-    marginBottom: theme.spacing.lg,
+
+    marginBottom: theme.semantic.spacing.lg,
   },
   sectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: theme.spacing.md,
-    gap: theme.spacing.sm,
+
+
+    marginBottom: theme.semantic.spacing.md,
+    gap: theme.semantic.spacing.sm,
   },
   sectionTitle: {
-    color: theme.colors.text.primary,
+
+    color: theme.semantic.colors.text.primary,
   },
   sectionContent: {
-    gap: theme.spacing.md,
+
+    gap: theme.semantic.spacing.md,
   },
   input: {
     marginBottom: 0,
@@ -464,28 +544,37 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: theme.spacing.sm,
+
+    paddingVertical: theme.semantic.spacing.sm,
   },
   settingsItemContent: {
     flex: 1,
   },
   settingsItemLabel: {
-    color: theme.colors.text.primary,
-    marginBottom: theme.spacing.xs,
+
+
+    color: theme.semantic.colors.text.primary,
+    marginBottom: theme.semantic.spacing.xs,
   },
   settingsItemSubtitle: {
-    color: theme.colors.text.secondary,
-    marginBottom: theme.spacing.xs,
+
+
+    color: theme.semantic.colors.text.secondary,
+    marginBottom: theme.semantic.spacing.xs,
   },
   settingsItemValue: {
-    color: theme.colors.text.secondary,
+
+    color: theme.semantic.colors.text.secondary,
   },
   settingsItemRight: {
-    marginLeft: theme.spacing.md,
+
+    marginLeft: theme.semantic.spacing.md,
   },
   saveSection: {
-    marginTop: theme.spacing.xl,
-    marginBottom: theme.spacing.lg,
+
+
+    marginTop: theme.semantic.spacing.xl,
+    marginBottom: theme.semantic.spacing.lg,
   },
   saveButton: {
     width: '100%',

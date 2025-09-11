@@ -3,6 +3,7 @@ import {
   View,
   StyleSheet,
   ViewStyle,
+  AccessibilityInfo,
 } from 'react-native';
 import Animated, {
   useSharedValue,
@@ -33,6 +34,7 @@ export interface SkeletonProps {
   height?: number;
   lines?: number;
   spacing?: number;
+  testID?: string;
 }
 
 // Skeleton component
@@ -43,26 +45,58 @@ export const Skeleton: React.FC<SkeletonProps> = React.memo(({
   width,
   height,
   lines = 1,
-  spacing = theme.spacing.sm,
+  spacing = theme.semantic.spacing.sm,
 }) => {
   // Animation values
   const opacity = useSharedValue(0.3);
+  const translateX = useSharedValue(-30);
+  const [reduceMotion, setReduceMotion] = React.useState<boolean>(false);
 
-  // Start shimmer animation
   React.useEffect(() => {
-    opacity.value = withRepeat(
-      withSequence(
-        withTiming(0.7, { duration: 750 }),
-        withTiming(0.3, { duration: 750 })
-      ),
-      -1,
-      true
-    );
+    AccessibilityInfo.isReduceMotionEnabled().then(setReduceMotion).catch(() => {});
+    const sub = AccessibilityInfo.addEventListener?.('reduceMotionChanged', setReduceMotion);
+    return () => {
+      // @ts-ignore RN web/older RN compatibility
+      sub?.remove?.();
+    };
   }, []);
+
+  // Start animation (pulse for reduced motion; shimmer sweep otherwise)
+  React.useEffect(() => {
+    if (reduceMotion) {
+      opacity.value = withRepeat(
+        withSequence(
+          withTiming(0.7, { duration: theme.semantic.component.skeleton.duration / 2 }),
+          withTiming(0.3, { duration: theme.semantic.component.skeleton.duration / 2 })
+        ),
+        -1,
+        true
+      );
+    } else {
+      // Shimmer: animate translateX to create a sweeping effect; coupled with slight opacity ramp
+      translateX.value = withRepeat(
+        withSequence(
+          withTiming(100, { duration: theme.semantic.component.skeleton.duration }),
+          withTiming(-30, { duration: 0 })
+        ),
+        -1,
+        false
+      );
+      opacity.value = withRepeat(
+        withSequence(
+          withTiming(0.7, { duration: theme.semantic.component.skeleton.duration / 2 }),
+          withTiming(0.3, { duration: theme.semantic.component.skeleton.duration / 2 })
+        ),
+        -1,
+        true
+      );
+    }
+  }, [reduceMotion]);
 
   // Animated styles
   const animatedStyle = useAnimatedStyle(() => ({
     opacity: opacity.value,
+    transform: reduceMotion ? undefined : [{ translateX: translateX.value }],
   }));
 
   // Get skeleton dimensions based on variant and size
@@ -89,19 +123,19 @@ export const Skeleton: React.FC<SkeletonProps> = React.memo(({
         return {
           height: height || 120,
           width: width || '100%',
-          borderRadius: theme.borderRadius.lg,
+          borderRadius: theme.semantic.radii.lg,
         };
       case 'button':
         return {
           height: size === 'sm' ? 32 : size === 'lg' ? 48 : 40,
           width: width || 120,
-          borderRadius: theme.borderRadius.md,
+          borderRadius: theme.semantic.radii.md,
         };
       default: // text
         return {
           height: baseHeight,
           width: width || '100%',
-          borderRadius: theme.borderRadius.sm,
+          borderRadius: theme.semantic.radii.sm,
         };
     }
   };
@@ -170,7 +204,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   skeleton: {
-    backgroundColor: theme.colors.surface,
+    backgroundColor: theme.semantic.colors.background.elevated,
   },
 });
 

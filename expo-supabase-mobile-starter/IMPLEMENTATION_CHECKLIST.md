@@ -1,4 +1,188 @@
+# Implementation Checklist------- SEARCH
 # Implementation Checklist
+=======
+# Implementation Checklist (MVP v2)
+
+This checklist aligns to the MVP scope and acceptance criteria defined in DEVELOPMENT_PLAN.md, FRONTEND_PLAN.md, and BACKEND_PLAN.md.
+
+Invariant guardrails
+- Tabs are exactly Dashboard, Clients, Documents, Billing
+- AI is contextual buttons only; no chat tab
+- OS share sheet only; email/SMS via deep links only
+- Integer cents; totals math per spec; PDF watermark rules per plan
+- Quotas enforced server-side; meters in UI
+
+## Phase 1: Foundations & Core UI
+- [ ] Theme tokens (navy palette, type scale, spacing, radii, shadows)
+- [ ] Primitive components (Card, Section, Row, Button.Primary/Secondary, IconButton, Input, Select, Tag, Badge, Pill, Toast/Snackbar, EmptyState, Meter, HelpOverlay)
+- [ ] Bottom tab bar (exact 4 tabs, icons + labels)
+- [ ] Loading shimmers; button spinners
+- [ ] Accessibility defaults (labels, roles, focus order, ≥44dp targets)
+
+## Phase 2: Auth & Security
+- [ ] Supabase auth flows; secure token storage
+- [ ] Optional biometric/PIN lock; background relock
+- [ ] Onboarding captures trade_type
+
+## Phase 3: Database & RLS
+- [ ] Tables: users, clients, documents, document_items, payments, vault_files, clauses, pricebook_items, document_shares (future)
+- [ ] Views: v_outstanding_invoices, v_paid_this_month
+- [ ] RLS policies for all tables
+- [ ] Storage byte accounting triggers
+
+## Phase 4: Clients
+- [ ] Clients list (search + open balance badge)
+- [ ] Client detail: contact actions (tel/sms/mailto)
+- [ ] Vault: upload/preview/retag/rename/delete; tag filters; per-file caps (Free 10MB, Pro 50MB)
+- [ ] Notes with ai.polish-text
+- [ ] Client Defaults (tax rate, payment instructions, reminders cadence)
+- [ ] Global storage meter (upgrade CTA near 90%)
+
+## Phase 5: Documents (Core)
+- [ ] Documents list (filters Type/Status/Date/Client + search)
+- [ ] Create wizard: Type → Client → Details → Branding → Preview → Save & Share
+- [ ] Invoice/Quote Details: line items table; Pricebook Quick Add (sheet); Manager (modal)
+- [ ] Contract Details: sectioned editor; Clause Picker; disclaimer
+- [ ] Branding: Free standard + watermark; Pro templates + logo/color; snapshot per doc
+- [ ] Preview matches exported PDF; save immutable PDF to Vault (auto-tag Billing)
+
+## Phase 6: Totals & Discounts
+- [ ] Integer-cents totals; line tax; invoice-level discount (amount/%); recompute instantly
+- [ ] Switching discount type recalculates once; never double-apply
+
+## Phase 7: Clause Library & Disclaimers
+- [ ] Seed clauses (scope/payment/warranty/liability/change/termination)
+- [ ] Insert at caret; editable after insert; Undo restores prior state
+- [ ] Mandatory footers present in PDFs
+
+## Phase 8: AI Turbo Buttons
+- [ ] ai.suggest-line-items, ai.add-clause, ai.polish-text, ai.add-warranty, ai.reminder-email
+- [ ] Quota meters; decrement only on successful insert; undo snackbar
+- [ ] Logging: ai_assist_used {type}
+
+## Phase 9: Billing (Manual Ledger)
+- [ ] Views: Unpaid, Paid This Month, All
+- [ ] Actions: btn.mark-paid (date, method, note), btn.record-partial (amount, method, date, note)
+- [ ] Reminder toggle per invoice; default from client
+
+## Phase 10: Dashboard
+- [ ] Cards: Outstanding, Paid This Month, Active Clients
+- [ ] Quick actions: new invoice/quote/contract, upload doc
+- [ ] Activity feed (20 items): doc created/sent/paid, partial payment, file upload/delete, clause inserted; deep links; reminder draft inline for unpaid
+
+## Phase 11: Quotas & Upsell
+- [ ] Free: 1GB storage, 5 exports/day (reset local midnight), 10 AI/month (reset 1st UTC)
+- [ ] Pro: 10GB storage, unlimited exports/AI, branding
+- [ ] Upgrade CTAs: branding, watermark removal, near storage cap, quotas
+- [ ] Server-side enforcement + UI meters (Settings + Client detail)
+
+## Phase 12: Settings & CSV
+- [ ] Profile & Security (biometric/PIN)
+- [ ] Meters (storage/AI/exports)
+- [ ] CSV exports (Clients & Docs metadata) via OS share
+- [ ] Legal pages (ToS/Privacy/Disclaimers)
+
+## Phase 13: QA/A11y/Perf
+- [ ] First paint < 2s; 1-page PDF < 2.5s; lists ≥55fps
+- [ ] A11y: labels, contrast, focus order, ≥44dp targets
+- [ ] Edge cases: storage cap, AI/export cap, offline share fallback for SMS attachments
+- [ ] Integration tests for main flows
+
+Notes
+- Remove references to Stripe payments and AI chat screens from scope
+- Pricebook is per-user (not per-client) with no import in MVP
+- Documents tab is a single list across types with filters
++++++++ REPLACE (MVP v2)
+
+This checklist aligns to the MVP scope and acceptance criteria defined in DEVELOPMENT_PLAN.md, FRONTEND_PLAN.md, and BACKEND_PLAN.md.
+
+Invariant guardrails
+- Tabs are exactly Dashboard, Clients, Documents, Billing
+- AI is contextual buttons only; no chat tab
+- OS share sheet only; email/SMS via deep links only
+- Integer cents; totals math per spec; PDF watermark rules per plan
+- Quotas enforced server-side; meters in UI
+
+## Phase 1: Foundations & Core UI
+- [ ] Theme tokens (navy palette, type scale, spacing, radii, shadows)
+- [ ] Primitive components (Card, Section, Row, Button.Primary/Secondary, IconButton, Input, Select, Tag, Badge, Pill, Toast/Snackbar, EmptyState, Meter, HelpOverlay)
+- [ ] Bottom tab bar (exact 4 tabs, icons + labels)
+- [ ] Loading shimmers; button spinners
+- [ ] Accessibility defaults (labels, roles, focus order, ≥44dp targets)
+
+## Phase 2: Auth & Security
+- [ ] Supabase auth flows; secure token storage
+- [ ] Optional biometric/PIN lock; background relock
+- [ ] Onboarding captures trade_type
+
+## Phase 3: Database & RLS
+- [ ] Tables: users, clients, documents, document_items, payments, vault_files, clauses, pricebook_items, document_shares (future)
+- [ ] Views: v_outstanding_invoices, v_paid_this_month
+- [ ] RLS policies for all tables
+- [ ] Storage byte accounting triggers
+
+## Phase 4: Clients
+- [ ] Clients list (search + open balance badge)
+- [ ] Client detail: contact actions (tel/sms/mailto)
+- [ ] Vault: upload/preview/retag/rename/delete; tag filters; per-file caps (Free 10MB, Pro 50MB)
+- [ ] Notes with ai.polish-text
+- [ ] Client Defaults (tax rate, payment instructions, reminders cadence)
+- [ ] Global storage meter (upgrade CTA near 90%)
+
+## Phase 5: Documents (Core)
+- [ ] Documents list (filters Type/Status/Date/Client + search)
+- [ ] Create wizard: Type → Client → Details → Branding → Preview → Save & Share
+- [ ] Invoice/Quote Details: line items table; Pricebook Quick Add (sheet); Manager (modal)
+- [ ] Contract Details: sectioned editor; Clause Picker; disclaimer
+- [ ] Branding: Free standard + watermark; Pro templates + logo/color; snapshot per doc
+- [ ] Preview matches exported PDF; save immutable PDF to Vault (auto-tag Billing)
+
+## Phase 6: Totals & Discounts
+- [ ] Integer-cents totals; line tax; invoice-level discount (amount/%); recompute instantly
+- [ ] Switching discount type recalculates once; never double-apply
+
+## Phase 7: Clause Library & Disclaimers
+- [ ] Seed clauses (scope/payment/warranty/liability/change/termination)
+- [ ] Insert at caret; editable after insert; Undo restores prior state
+- [ ] Mandatory footers present in PDFs
+
+## Phase 8: AI Turbo Buttons
+- [ ] ai.suggest-line-items, ai.add-clause, ai.polish-text, ai.add-warranty, ai.reminder-email
+- [ ] Quota meters; decrement only on successful insert; undo snackbar
+- [ ] Logging: ai_assist_used {type}
+
+## Phase 9: Billing (Manual Ledger)
+- [ ] Views: Unpaid, Paid This Month, All
+- [ ] Actions: btn.mark-paid (date, method, note), btn.record-partial (amount, method, date, note)
+- [ ] Reminder toggle per invoice; default from client
+
+## Phase 10: Dashboard
+- [ ] Cards: Outstanding, Paid This Month, Active Clients
+- [ ] Quick actions: new invoice/quote/contract, upload doc
+- [ ] Activity feed (20 items): doc created/sent/paid, partial payment, file upload/delete, clause inserted; deep links; reminder draft inline for unpaid
+
+## Phase 11: Quotas & Upsell
+- [ ] Free: 1GB storage, 5 exports/day (reset local midnight), 10 AI/month (reset 1st UTC)
+- [ ] Pro: 10GB storage, unlimited exports/AI, branding
+- [ ] Upgrade CTAs: branding, watermark removal, near storage cap, quotas
+- [ ] Server-side enforcement + UI meters (Settings + Client detail)
+
+## Phase 12: Settings & CSV
+- [ ] Profile & Security (biometric/PIN)
+- [ ] Meters (storage/AI/exports)
+- [ ] CSV exports (Clients & Docs metadata) via OS share
+- [ ] Legal pages (ToS/Privacy/Disclaimers)
+
+## Phase 13: QA/A11y/Perf
+- [ ] First paint < 2s; 1-page PDF < 2.5s; lists ≥55fps
+- [ ] A11y: labels, contrast, focus order, ≥44dp targets
+- [ ] Edge cases: storage cap, AI/export cap, offline share fallback for SMS attachments
+- [ ] Integration tests for main flows
+
+Notes
+- Remove references to Stripe payments and AI chat screens from scope
+- Pricebook is per-user (not per-client) with no import in MVP
+- Documents tab is a single list across types with filters
 
 ## Phase 1: Foundation & Core UI (Week 1-2)
 

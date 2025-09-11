@@ -5,6 +5,7 @@ import {
   StyleSheet,
   Text,
   Alert,
+  Pressable,
 } from 'react-native';
 import { router } from 'expo-router';
 import { ArrowLeft, Trash2, Save, Send } from 'lucide-react-native';
@@ -16,45 +17,33 @@ import {
   Input,
   Badge,
   LoadingSpinner,
+  Screen,
 } from '../../../components/ui';
 
 // Hooks
-import {
-  useClients,
-  useCreateInvoice,
-} from '../../../lib/query/hooks';
+import { useClients, useInvoices } from '../../../lib/state/simpleStore';
 
 // Theme
 import { theme } from '../../../lib/theme/tokens';
-import { textStyles } from '../../../lib/theme/utils';
-
-// Types
-import { ClientWithJobs } from '../../../lib/api/clients';
-import { ClientFilters } from '../../../lib/database/types';
-
-type Client = ClientWithJobs;
 
 // Define a simple InvoiceItem type for the form
 interface InvoiceItem {
   id: number;
-  invoice_id: number;
   description: string;
   quantity: number;
   unit_price: number;
   total: number;
-  created_at: string;
-  updated_at: string;
 }
 
 // Step 1: Client Selection
 const ClientSelectionStep: React.FC<{
-  selectedClient: Client | null;
-  onClientSelect: (client: Client) => void;
+  selectedClient: any | null;
+  onClientSelect: (client: any) => void;
   onNext: () => void;
 }> = ({ selectedClient, onClientSelect, onNext }) => {
-  const { data: clientsData, isLoading } = useClients('org-id', { status: 'active' });
+  const { clients } = useClients();
 
-  const handleClientSelect = useCallback((client: Client) => {
+  const handleClientSelect = useCallback((client: any) => {
     onClientSelect(client);
   }, [onClientSelect]);
 
@@ -68,47 +57,57 @@ const ClientSelectionStep: React.FC<{
 
   return (
     <View style={styles.stepContainer}>
-      <Text style={[textStyles.h2, styles.stepTitle]}>
+      <Text style={[styles.stepTitle]}>
         Select Client
       </Text>
-      <Text style={[textStyles.body, styles.stepSubtitle]}>
+      <Text style={[styles.stepSubtitle]}>
         Choose the client for this invoice
       </Text>
 
-      {isLoading ? (
-        <View style={styles.loadingContainer}>
-          <LoadingSpinner size="large" />
-          <Text style={[textStyles.body, styles.loadingText]}>
-            Loading clients...
-          </Text>
-        </View>
-      ) : (
-        <ScrollView style={styles.clientList}>
-          {clientsData?.map((client) => (
-                         <Card
-               key={client.id}
-               variant={selectedClient?.id?.toString() === client.id ? 'elevated' : 'outlined'}
-              style={styles.clientCard}
-               onPress={() => handleClientSelect(client)}
-             >
-              <View style={styles.clientInfo}>
-                <Text style={[textStyles.h3, styles.clientName]}>
-                  {client.name}
-                </Text>
-                <Text style={[textStyles.body, styles.clientEmail]}>
-                  {client.email}
-                </Text>
-                {/* contact_name not available in current API response */}
-              </View>
-              {selectedClient?.id?.toString() === client.id && (
-                <Badge variant="success" style={styles.selectedBadge}>
-                  Selected
-                </Badge>
-              )}
-            </Card>
-          ))}
-        </ScrollView>
-      )}
+      <ScrollView style={styles.clientList}>
+        {clients.map((client) => (
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+          <React.Fragment key={client.id}>
+
+            <Pressable accessibilityRole="button" accessibilityLabel={`Select ${client.name}`} onPress={() => handleClientSelect(client)}>
+              <Card
+                variant={selectedClient?.id === client.id ? 'elevated' : 'outlined'}
+                style={styles.clientCard}
+              >
+                <View style={styles.clientInfo}>
+                  <Text style={[styles.clientName]}>
+                    {client.name}
+                  </Text>
+                  <Text style={[styles.clientEmail]}>
+                    {client.email}
+                  </Text>
+                </View>
+                {selectedClient?.id === client.id && (
+                  <Badge label="Selected" variant="success" style={styles.selectedBadge} />
+                )}
+              </Card>
+
+            </Pressable>
+
+
+
+
+          </React.Fragment>
+        ))}
+      </ScrollView>
 
       <View style={styles.stepActions}>
         <Button
@@ -126,7 +125,7 @@ const ClientSelectionStep: React.FC<{
 
 // Step 2: Line Items
 const LineItemsStep: React.FC<{
-  selectedClient: Client;
+  selectedClient: any;
   lineItems: InvoiceItem[];
   onLineItemsChange: (items: InvoiceItem[]) => void;
   onBack: () => void;
@@ -146,13 +145,10 @@ const LineItemsStep: React.FC<{
 
     const item: InvoiceItem = {
       id: Date.now(), // Temporary ID
-      invoice_id: 0, // Will be set when invoice is created
       description: newItem.description,
       quantity: parseFloat(newItem.quantity),
       unit_price: parseFloat(newItem.unit_price),
       total: parseFloat(newItem.quantity) * parseFloat(newItem.unit_price),
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
     };
 
     onLineItemsChange([...lineItems, item]);
@@ -191,16 +187,16 @@ const LineItemsStep: React.FC<{
 
   return (
     <View style={styles.stepContainer}>
-      <Text style={[textStyles.h2, styles.stepTitle]}>
+      <Text style={[styles.stepTitle]}>
         Line Items
       </Text>
-      <Text style={[textStyles.body, styles.stepSubtitle]}>
+      <Text style={[styles.stepSubtitle]}>
         Add items and services for {selectedClient.name}
       </Text>
 
       {/* Add new item form */}
       <Card variant="outlined" style={styles.addItemCard}>
-        <Text style={[textStyles.h3, styles.addItemTitle]}>
+        <Text style={[styles.addItemTitle]}>
           Add Item
         </Text>
         <View style={styles.addItemForm}>
@@ -226,13 +222,13 @@ const LineItemsStep: React.FC<{
               style={styles.priceInput}
             />
           </View>
-                     <Button
-             variant="outline"
-             size="sm"
-             onPress={addLineItem}
-             style={styles.addItemButton}
-             title="Add Item"
-           />
+          <Button
+            variant="outline"
+            size="sm"
+            onPress={addLineItem}
+            style={styles.addItemButton}
+            title="Add Item"
+          />
         </View>
       </Card>
 
@@ -241,7 +237,7 @@ const LineItemsStep: React.FC<{
         {lineItems.map((item, index) => (
           <Card key={item.id} variant="outlined" style={styles.lineItemCard}>
             <View style={styles.lineItemHeader}>
-              <Text style={[textStyles.body, styles.lineItemDescription]}>
+              <Text style={[styles.lineItemDescription]}>
                 {item.description}
               </Text>
               <Button
@@ -270,7 +266,7 @@ const LineItemsStep: React.FC<{
                   style={styles.priceInput}
                 />
               </View>
-              <Text style={[textStyles.body, styles.lineItemTotal]}>
+              <Text style={[styles.lineItemTotal]}>
                 Total: ${item.total.toFixed(2)}
               </Text>
             </View>
@@ -281,24 +277,24 @@ const LineItemsStep: React.FC<{
       {/* Totals */}
       {lineItems.length > 0 && (
         <Card variant="elevated" style={styles.totalsCard}>
-          <Text style={[textStyles.h3, styles.totalsTitle]}>
+          <Text style={[styles.totalsTitle]}>
             Totals
           </Text>
           <View style={styles.totalsRow}>
-            <Text style={[textStyles.body, styles.totalsLabel]}>Subtotal:</Text>
-            <Text style={[textStyles.body, styles.totalsValue]}>
+            <Text style={[styles.totalsLabel]}>Subtotal:</Text>
+            <Text style={[styles.totalsValue]}>
               ${subtotal.toFixed(2)}
             </Text>
           </View>
           <View style={styles.totalsRow}>
-            <Text style={[textStyles.body, styles.totalsLabel]}>Tax (10%):</Text>
-            <Text style={[textStyles.body, styles.totalsValue]}>
+            <Text style={[styles.totalsLabel]}>Tax (10%):</Text>
+            <Text style={[styles.totalsValue]}>
               ${taxAmount.toFixed(2)}
             </Text>
           </View>
           <View style={[styles.totalsRow, styles.totalRow]}>
-            <Text style={[textStyles.h3, styles.totalLabel]}>Total:</Text>
-            <Text style={[textStyles.h3, styles.totalValue]}>
+            <Text style={[styles.totalLabel]}>Total:</Text>
+            <Text style={[styles.totalValue]}>
               ${total.toFixed(2)}
             </Text>
           </View>
@@ -329,113 +325,51 @@ const LineItemsStep: React.FC<{
 
 // Step 3: Review & Send
 const ReviewStep: React.FC<{
-  selectedClient: Client;
+  selectedClient: any;
   lineItems: InvoiceItem[];
   onBack: () => void;
   onSave: () => void;
   onSend: () => void;
-}> = ({ selectedClient, lineItems, onBack }) => {
-  const createInvoiceMutation = useCreateInvoice();
-  // Invoice items are created automatically with the invoice
-
+}> = ({ selectedClient, lineItems, onBack, onSave, onSend }) => {
   const subtotal = lineItems.reduce((sum, item) => sum + item.total, 0);
   const taxRate = 0.1;
   const taxAmount = subtotal * taxRate;
   const total = subtotal + taxAmount;
 
-  const handleSave = useCallback(async () => {
-    try {
-      const invoiceId = await createInvoiceMutation.mutateAsync({
-        orgId: 'org-id',
-        data: {
-          client_id: selectedClient.id.toString(),
-          currency: 'USD',
-          tax_rate_pct: taxRate,
-          discount_amt: 0,
-          issue_date: new Date().toISOString().split('T')[0],
-          items: lineItems.map(item => ({
-            description: item.description,
-            quantity: item.quantity,
-            unit_price: item.unit_price,
-            taxable: true
-          }))
-        }
-      });
-
-      // Invoice items are created automatically with the invoice
-
-      Alert.alert('Success', 'Invoice saved as draft', [
-        { text: 'OK', onPress: () => router.back() }
-      ]);
-    } catch (error) {
-      Alert.alert('Error', 'Failed to save invoice. Please try again.');
-    }
-  }, [selectedClient.id, lineItems, subtotal, taxAmount, total, createInvoiceMutation]);
-
-  const handleSend = useCallback(async () => {
-    try {
-      const invoiceId = await createInvoiceMutation.mutateAsync({
-        orgId: 'org-id',
-        data: {
-          client_id: selectedClient.id.toString(),
-          currency: 'USD',
-          tax_rate_pct: taxRate,
-          discount_amt: 0,
-          issue_date: new Date().toISOString().split('T')[0],
-          items: lineItems.map(item => ({
-            description: item.description,
-            quantity: item.quantity,
-            unit_price: item.unit_price,
-            taxable: true
-          }))
-        }
-      });
-
-      // Invoice items are created automatically with the invoice
-
-      Alert.alert('Success', 'Invoice sent successfully', [
-        { text: 'OK', onPress: () => router.back() }
-      ]);
-    } catch (error) {
-      Alert.alert('Error', 'Failed to send invoice. Please try again.');
-    }
-  }, [selectedClient.id, lineItems, subtotal, taxAmount, total, createInvoiceMutation]);
-
   return (
     <View style={styles.stepContainer}>
-      <Text style={[textStyles.h2, styles.stepTitle]}>
+      <Text style={[styles.stepTitle]}>
         Review & Send
       </Text>
-      <Text style={[textStyles.body, styles.stepSubtitle]}>
+      <Text style={[styles.stepSubtitle]}>
         Review your invoice before sending
       </Text>
 
       <ScrollView style={styles.reviewContent}>
         {/* Client info */}
         <Card variant="outlined" style={styles.reviewCard}>
-          <Text style={[textStyles.h3, styles.reviewCardTitle]}>
+          <Text style={[styles.reviewCardTitle]}>
             Client Information
           </Text>
-          <Text style={[textStyles.body, styles.reviewText]}>
+          <Text style={[styles.reviewText]}>
             {selectedClient.name}
           </Text>
-          <Text style={[textStyles.body, styles.reviewText]}>
+          <Text style={[styles.reviewText]}>
             {selectedClient.email}
           </Text>
-          {/* contact_name not available in current API response */}
         </Card>
 
         {/* Line items */}
         <Card variant="outlined" style={styles.reviewCard}>
-          <Text style={[textStyles.h3, styles.reviewCardTitle]}>
+          <Text style={[styles.reviewCardTitle]}>
             Line Items
           </Text>
           {lineItems.map((item, index) => (
             <View key={index} style={styles.reviewLineItem}>
-              <Text style={[textStyles.body, styles.reviewItemDescription]}>
+              <Text style={[styles.reviewItemDescription]}>
                 {item.description}
               </Text>
-              <Text style={[textStyles.body, styles.reviewItemDetails]}>
+              <Text style={[styles.reviewItemDetails]}>
                 {item.quantity} × ${item.unit_price.toFixed(2)} = ${item.total.toFixed(2)}
               </Text>
             </View>
@@ -444,24 +378,24 @@ const ReviewStep: React.FC<{
 
         {/* Totals */}
         <Card variant="elevated" style={styles.reviewCard}>
-          <Text style={[textStyles.h3, styles.reviewCardTitle]}>
+          <Text style={[styles.reviewCardTitle]}>
             Totals
           </Text>
           <View style={styles.totalsRow}>
-            <Text style={[textStyles.body, styles.totalsLabel]}>Subtotal:</Text>
-            <Text style={[textStyles.body, styles.totalsValue]}>
+            <Text style={[styles.totalsLabel]}>Subtotal:</Text>
+            <Text style={[styles.totalsValue]}>
               ${subtotal.toFixed(2)}
             </Text>
           </View>
           <View style={styles.totalsRow}>
-            <Text style={[textStyles.body, styles.totalsLabel]}>Tax (10%):</Text>
-            <Text style={[textStyles.body, styles.totalsValue]}>
+            <Text style={[styles.totalsLabel]}>Tax (10%):</Text>
+            <Text style={[styles.totalsValue]}>
               ${taxAmount.toFixed(2)}
             </Text>
           </View>
           <View style={[styles.totalsRow, styles.totalRow]}>
-            <Text style={[textStyles.h3, styles.totalLabel]}>Total:</Text>
-            <Text style={[textStyles.h3, styles.totalValue]}>
+            <Text style={[styles.totalLabel]}>Total:</Text>
+            <Text style={[styles.totalValue]}>
               ${total.toFixed(2)}
             </Text>
           </View>
@@ -480,8 +414,7 @@ const ReviewStep: React.FC<{
         <Button
           variant="outline"
           size="lg"
-          onPress={handleSave}
-          loading={createInvoiceMutation.isPending}
+          onPress={onSave}
           style={styles.saveButton}
           leftIcon={<Save size={20} color={theme.colors.primary} />}
           title="Save Draft"
@@ -489,8 +422,7 @@ const ReviewStep: React.FC<{
         <Button
           variant="primary"
           size="lg"
-          onPress={handleSend}
-          loading={createInvoiceMutation.isPending}
+          onPress={onSend}
           style={styles.sendButton}
           leftIcon={<Send size={20} color={theme.colors.text.inverse} />}
           title="Send Invoice"
@@ -503,10 +435,11 @@ const ReviewStep: React.FC<{
 // Main Invoice Creation Wizard
 export default function InvoiceCreationWizard() {
   const [currentStep, setCurrentStep] = useState(1);
-  const [selectedClient, setSelectedClient] = useState<Client | null>(null);
+  const [selectedClient, setSelectedClient] = useState<any | null>(null);
   const [lineItems, setLineItems] = useState<InvoiceItem[]>([]);
+  const { createInvoice } = useInvoices();
 
-  const handleClientSelect = useCallback((client: Client) => {
+  const handleClientSelect = useCallback((client: any) => {
     setSelectedClient(client);
   }, []);
 
@@ -523,12 +456,50 @@ export default function InvoiceCreationWizard() {
   }, [currentStep]);
 
   const handleSave = useCallback(() => {
-    // Handled in ReviewStep component
-  }, []);
+    if (!selectedClient) return;
+    
+    const total = lineItems.reduce((sum, item) => sum + item.total, 0) * 1.1; // Include tax
+    
+    createInvoice({
+      clientId: selectedClient.id,
+      total,
+      status: 'unpaid',
+      dueDate: new Date(),
+      items: lineItems.map(item => ({
+        id: item.id.toString(),
+        description: item.description,
+        qty: item.quantity,
+        price: item.unit_price,
+      })),
+    });
+
+    Alert.alert('Success', 'Invoice saved as draft', [
+      { text: 'OK', onPress: () => router.back() }
+    ]);
+  }, [selectedClient, lineItems, createInvoice]);
 
   const handleSend = useCallback(() => {
-    // Handled in ReviewStep component
-  }, []);
+    if (!selectedClient) return;
+    
+    const total = lineItems.reduce((sum, item) => sum + item.total, 0) * 1.1; // Include tax
+    
+    createInvoice({
+      clientId: selectedClient.id,
+      total,
+      status: 'unpaid',
+      dueDate: new Date(),
+      items: lineItems.map(item => ({
+        id: item.id.toString(),
+        description: item.description,
+        qty: item.quantity,
+        price: item.unit_price,
+      })),
+    });
+
+    Alert.alert('Success', 'Invoice sent successfully', [
+      { text: 'OK', onPress: () => router.back() }
+    ]);
+  }, [selectedClient, lineItems, createInvoice]);
 
   const renderCurrentStep = () => {
     switch (currentStep) {
@@ -566,7 +537,7 @@ export default function InvoiceCreationWizard() {
   };
 
   return (
-    <View style={styles.container}>
+    <Screen>
       {/* Header */}
       <View style={styles.header}>
         <Button
@@ -578,7 +549,7 @@ export default function InvoiceCreationWizard() {
           leftIcon={<ArrowLeft size={20} color={theme.colors.text.primary} />}
         />
         <View style={styles.headerContent}>
-          <Text style={[textStyles.h2, styles.headerTitle]}>
+          <Text style={[styles.headerTitle]}>
             New Invoice
           </Text>
           <View style={styles.stepIndicator}>
@@ -598,16 +569,12 @@ export default function InvoiceCreationWizard() {
 
       {/* Step content */}
       {renderCurrentStep()}
-    </View>
+    </Screen>
   );
 }
 
 // Styles
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: theme.colors.background,
-  },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -625,6 +592,8 @@ const styles = StyleSheet.create({
   headerTitle: {
     color: theme.colors.text.primary,
     marginBottom: theme.spacing.sm,
+    fontSize: theme.typography.fontSize.h2,
+    fontWeight: theme.typography.fontWeight.bold,
   },
   stepIndicator: {
     flexDirection: 'row',
@@ -649,19 +618,13 @@ const styles = StyleSheet.create({
   stepTitle: {
     color: theme.colors.text.primary,
     marginBottom: theme.spacing.xs,
+    fontSize: theme.typography.fontSize.h2,
+    fontWeight: theme.typography.fontWeight.bold,
   },
   stepSubtitle: {
     color: theme.colors.text.secondary,
     marginBottom: theme.spacing.lg,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  loadingText: {
-    color: theme.colors.text.secondary,
-    marginTop: theme.spacing.md,
+    fontSize: theme.typography.fontSize.body,
   },
   clientList: {
     flex: 1,
@@ -669,23 +632,19 @@ const styles = StyleSheet.create({
   clientCard: {
     marginBottom: theme.spacing.md,
   },
-  selectedClientCard: {
-    borderColor: theme.colors.primary,
-    borderWidth: 2,
-  },
   clientInfo: {
     flex: 1,
   },
   clientName: {
     color: theme.colors.text.primary,
     marginBottom: theme.spacing.xs,
+    fontSize: theme.typography.fontSize.h3,
+    fontWeight: theme.typography.fontWeight.semibold,
   },
   clientEmail: {
     color: theme.colors.text.secondary,
     marginBottom: theme.spacing.xs,
-  },
-  contactName: {
-    color: theme.colors.text.secondary,
+    fontSize: theme.typography.fontSize.body,
   },
   selectedBadge: {
     alignSelf: 'flex-start',
@@ -696,6 +655,8 @@ const styles = StyleSheet.create({
   addItemTitle: {
     color: theme.colors.text.primary,
     marginBottom: theme.spacing.md,
+    fontSize: theme.typography.fontSize.h3,
+    fontWeight: theme.typography.fontWeight.semibold,
   },
   addItemForm: {
     gap: theme.spacing.md,
@@ -733,6 +694,7 @@ const styles = StyleSheet.create({
   lineItemDescription: {
     color: theme.colors.text.primary,
     flex: 1,
+    fontSize: theme.typography.fontSize.body,
   },
   removeItemButton: {
     paddingHorizontal: theme.spacing.sm,
@@ -742,7 +704,8 @@ const styles = StyleSheet.create({
   },
   lineItemTotal: {
     color: theme.colors.text.primary,
-    fontWeight: '600',
+    fontWeight: theme.typography.fontWeight.semibold,
+    fontSize: theme.typography.fontSize.body,
   },
   totalsCard: {
     marginTop: theme.spacing.lg,
@@ -750,6 +713,8 @@ const styles = StyleSheet.create({
   totalsTitle: {
     color: theme.colors.text.primary,
     marginBottom: theme.spacing.md,
+    fontSize: theme.typography.fontSize.h3,
+    fontWeight: theme.typography.fontWeight.semibold,
   },
   totalsRow: {
     flexDirection: 'row',
@@ -759,9 +724,11 @@ const styles = StyleSheet.create({
   },
   totalsLabel: {
     color: theme.colors.text.secondary,
+    fontSize: theme.typography.fontSize.body,
   },
   totalsValue: {
     color: theme.colors.text.primary,
+    fontSize: theme.typography.fontSize.body,
   },
   totalRow: {
     borderTopWidth: 1,
@@ -771,9 +738,13 @@ const styles = StyleSheet.create({
   },
   totalLabel: {
     color: theme.colors.text.primary,
+    fontSize: theme.typography.fontSize.h3,
+    fontWeight: theme.typography.fontWeight.semibold,
   },
   totalValue: {
     color: theme.colors.text.primary,
+    fontSize: theme.typography.fontSize.h3,
+    fontWeight: theme.typography.fontWeight.semibold,
   },
   stepActions: {
     flexDirection: 'row',
@@ -801,10 +772,13 @@ const styles = StyleSheet.create({
   reviewCardTitle: {
     color: theme.colors.text.primary,
     marginBottom: theme.spacing.md,
+    fontSize: theme.typography.fontSize.h3,
+    fontWeight: theme.typography.fontWeight.semibold,
   },
   reviewText: {
     color: theme.colors.text.secondary,
     marginBottom: theme.spacing.xs,
+    fontSize: theme.typography.fontSize.body,
   },
   reviewLineItem: {
     marginBottom: theme.spacing.md,
@@ -812,8 +786,10 @@ const styles = StyleSheet.create({
   reviewItemDescription: {
     color: theme.colors.text.primary,
     marginBottom: theme.spacing.xs,
+    fontSize: theme.typography.fontSize.body,
   },
   reviewItemDetails: {
     color: theme.colors.text.secondary,
+    fontSize: theme.typography.fontSize.body,
   },
 });

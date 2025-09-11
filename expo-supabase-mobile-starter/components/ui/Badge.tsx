@@ -1,246 +1,152 @@
 import React from 'react';
-import {
-  View,
-  Text,
-  ViewStyle,
-  TextStyle,
-} from 'react-native';
+import { Text, View, ViewStyle } from 'react-native';
 import { theme } from '../../lib/theme/tokens';
-import { badgeStyles } from '../../lib/theme/utils';
 
-// Badge variants
-export type BadgeVariant = 'success' | 'warning' | 'error' | 'info' | 'default';
-
-// Badge sizes
-export type BadgeSize = 'sm' | 'md' | 'lg';
-
-// Badge props interface
-export interface BadgeProps {
-  // Content
-  children: React.ReactNode;
-  
-  // Variants
-  variant?: BadgeVariant;
-  size?: BadgeSize;
-  
-  // Styling
+export type BadgeProps = {
+  /**
+   * The text to display in the badge.
+   */
+  label?: string;
+  /**
+   * The visual variant of the badge.
+   */
+  variant?: 'default' | 'success' | 'warning' | 'error' | 'info';
+  /**
+   * The size of the badge.
+   */
+  size?: 'sm' | 'md' | 'lg';
+  /**
+   * Status for convenience (maps to label and variant)
+   */
+  status?: 'active' | 'inactive';
+  /**
+   * Style overrides for the badge container.
+   */
   style?: ViewStyle;
-  textStyle?: TextStyle;
-  
-  // Other
-  fullWidth?: boolean;
-}
+};
 
-// Badge component
-export const Badge: React.FC<BadgeProps> = React.memo(({
-  children,
+export default function Badge({
+  label,
   variant = 'default',
   size = 'md',
+  status,
   style,
-  textStyle,
-  fullWidth = false,
-}) => {
-  // Get badge styles based on variant and size
-  const getBadgeStyle = (): ViewStyle => {
-    const baseStyle = badgeStyles.base;
-    const variantStyle = getVariantStyle(variant);
-    const sizeStyle = getSizeStyle(size);
-    const widthStyle = fullWidth ? { width: '100%' as const } : {};
-
-    return {
-      ...baseStyle,
-      ...variantStyle,
-      ...sizeStyle,
-      ...widthStyle,
-    };
-  };
-
-  // Get text styles based on variant and size
-  const getTextStyle = (): TextStyle => {
-    const baseTextStyle = getBaseTextStyle(variant);
-    const sizeTextStyle = getSizeTextStyle(size);
-
-    return {
-      ...baseTextStyle,
-      ...sizeTextStyle,
-    };
-  };
-
-  // Get variant-specific styles
-  const getVariantStyle = (badgeVariant: BadgeVariant): ViewStyle => {
-    switch (badgeVariant) {
+}: BadgeProps) {
+  // Handle status prop for convenience
+  const finalLabel = status ? status : label;
+  const finalVariant = status === 'active' ? 'success' : status === 'inactive' ? 'warning' : variant;
+  const getBackgroundColor = () => {
+    switch (finalVariant) {
       case 'success':
-        return badgeStyles.success;
+        return theme.semantic.colors.state.success;
       case 'warning':
-        return badgeStyles.warning;
+        return theme.semantic.colors.state.warning;
       case 'error':
-        return badgeStyles.error;
+        return theme.semantic.colors.state.danger;
       case 'info':
-        return badgeStyles.info;
+        return theme.semantic.colors.state.info;
       default:
-        return {
-          backgroundColor: theme.colors.surface,
-          borderWidth: 1,
-          borderColor: theme.colors.border,
-        };
+        return theme.semantic.colors.background.surface;
     }
   };
 
-  // Get size-specific styles
-  const getSizeStyle = (badgeSize: BadgeSize): ViewStyle => {
-    switch (badgeSize) {
-      case 'sm':
-        return {
-          paddingHorizontal: theme.spacing.xs,
-          paddingVertical: 2,
-        };
-      case 'lg':
-        return {
-          paddingHorizontal: theme.spacing.md,
-          paddingVertical: theme.spacing.sm,
-        };
-      default: // md
-        return {
-          paddingHorizontal: theme.spacing.sm,
-          paddingVertical: theme.spacing.xs,
-        };
-    }
-  };
-
-  // Get base text style based on variant
-  const getBaseTextStyle = (badgeVariant: BadgeVariant): TextStyle => {
-    switch (badgeVariant) {
+  const getTextColor = () => {
+    switch (finalVariant) {
       case 'success':
-        return {
-          color: theme.colors.text.inverse,
-          fontWeight: theme.typography.fontWeight.semibold,
-        };
       case 'warning':
-        return {
-          color: theme.colors.text.inverse,
-          fontWeight: theme.typography.fontWeight.semibold,
-        };
       case 'error':
-        return {
-          color: theme.colors.text.inverse,
-          fontWeight: theme.typography.fontWeight.semibold,
-        };
+        return theme.semantic.colors.text.inverse;
       case 'info':
-        return {
-          color: theme.colors.text.inverse,
-          fontWeight: theme.typography.fontWeight.semibold,
-        };
+        return theme.semantic.colors.text.primary;
       default:
-        return {
-          color: theme.colors.text.primary,
-          fontWeight: theme.typography.fontWeight.semibold,
-        };
+        return theme.semantic.colors.text.primary;
     }
   };
 
-  // Get size-specific text styles
-  const getSizeTextStyle = (badgeSize: BadgeSize): TextStyle => {
-    switch (badgeSize) {
+  const getPadding = () => {
+    switch (size) {
       case 'sm':
-        return {
-          fontSize: theme.typography.fontSize.caption,
-        };
+        return { paddingHorizontal: theme.spacing.sm, paddingVertical: theme.spacing.xs };
       case 'lg':
-        return {
-          fontSize: theme.typography.fontSize.body,
-        };
-      default: // md
-        return {
-          fontSize: theme.typography.fontSize.caption,
-        };
+        return { paddingHorizontal: theme.spacing.md, paddingVertical: theme.spacing.sm };
+      default:
+        return { paddingHorizontal: theme.spacing.sm, paddingVertical: theme.spacing.xs };
+    }
+  };
+
+  const getFontSize = () => {
+    switch (size) {
+      case 'sm':
+        return theme.typography.fontSize.caption; // 13
+      case 'lg':
+        return theme.typography.fontSize.body; // 16
+      default:
+        return theme.typography.fontSize.caption; // 13
     }
   };
 
   return (
-    <View style={[getBadgeStyle(), style]}>
-      {typeof children === 'string' ? (
-        <Text style={[getTextStyle(), textStyle]}>{children}</Text>
-      ) : (
-        children
-      )}
+    <View
+      style={[
+        {
+          backgroundColor: getBackgroundColor(),
+          borderRadius: theme.semantic.radii.full,
+          ...getPadding(),
+          alignSelf: 'flex-start',
+        },
+        style,
+      ]}
+    >
+              <Text
+          style={{
+            color: getTextColor(),
+            fontSize: getFontSize(),
+            fontWeight: theme.semantic.type.weight.semibold,
+            textTransform: 'capitalize',
+          }}
+        >
+          {finalLabel}
+        </Text>
     </View>
   );
-});
+}
 
-// Status badge components for convenience
-export const SuccessBadge: React.FC<Omit<BadgeProps, 'variant'>> = (props) => (
+// Convenience components for common variants
+export const SuccessBadge = (props: Omit<BadgeProps, 'variant'>) => (
   <Badge {...props} variant="success" />
 );
 
-export const WarningBadge: React.FC<Omit<BadgeProps, 'variant'>> = (props) => (
+export const WarningBadge = (props: Omit<BadgeProps, 'variant'>) => (
   <Badge {...props} variant="warning" />
 );
 
-export const ErrorBadge: React.FC<Omit<BadgeProps, 'variant'>> = (props) => (
+export const ErrorBadge = (props: Omit<BadgeProps, 'variant'>) => (
   <Badge {...props} variant="error" />
 );
 
-export const InfoBadge: React.FC<Omit<BadgeProps, 'variant'>> = (props) => (
+export const InfoBadge = (props: Omit<BadgeProps, 'variant'>) => (
   <Badge {...props} variant="info" />
 );
 
-// Client status badge component
-export const ClientStatusBadge: React.FC<{
-  status: 'active' | 'inactive';
-  size?: BadgeSize;
-}> = ({ status, size = 'md' }) => {
-  const variant = status === 'active' ? 'success' : 'warning';
-  const label = status === 'active' ? 'Active' : 'Inactive';
-  
-  return (
-    <Badge variant={variant} size={size}>
-      {label}
-    </Badge>
-  );
-};
+// Specialized badges for specific use cases
+export const ClientStatusBadge: React.FC<{ status: 'active' | 'inactive' }> = ({ status }) => (
+  <Badge
+    label={status}
+    variant={status === 'active' ? 'success' : 'warning'}
+  />
+);
 
-// Invoice status badge component
-export const InvoiceStatusBadge: React.FC<{
-  status: 'draft' | 'sent' | 'paid' | 'overdue' | 'cancelled';
-  size?: BadgeSize;
-}> = ({ status, size = 'md' }) => {
-  const getVariant = (): BadgeVariant => {
+export const InvoiceStatusBadge: React.FC<{ status: 'paid' | 'unpaid' | 'overdue' }> = ({ status }) => {
+  const getVariant = () => {
     switch (status) {
-      case 'draft':
-        return 'default';
-      case 'sent':
-        return 'info';
       case 'paid':
-        return 'success';
+        return 'success' as const;
       case 'overdue':
-        return 'error';
-      case 'cancelled':
-        return 'default';
+        return 'error' as const;
       default:
-        return 'default';
+        return 'warning' as const;
     }
   };
 
-  const getLabel = (): string => {
-    switch (status) {
-      case 'draft':
-        return 'Draft';
-      case 'sent':
-        return 'Sent';
-      case 'paid':
-        return 'Paid';
-      case 'overdue':
-        return 'Overdue';
-      case 'cancelled':
-        return 'Cancelled';
-      default:
-        return status;
-    }
-  };
-
-  return (
-    <Badge variant={getVariant()} size={size}>
-      {getLabel()}
-    </Badge>
-  );
+  return <Badge label={status} variant={getVariant()} />;
 };

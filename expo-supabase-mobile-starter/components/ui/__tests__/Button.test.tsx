@@ -1,6 +1,6 @@
 import React from 'react';
 import { render, fireEvent } from '@testing-library/react-native';
-import { Button } from '../Button';
+import Button from '../Button';
 
 describe('Button Component', () => {
   it('renders correctly with default props', () => {
@@ -113,7 +113,6 @@ describe('Button Component', () => {
         title="Accessible Button"
         onPress={onPress}
         accessibilityLabel="Test button"
-        accessibilityHint="Press to test"
       />
     );
     
